@@ -42,5 +42,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   built-in navigation monitor. README adds React Router, Next.js, and
   infinite-scroll recipes. `setIsSinglePageApplication` is also exported as a
   standalone passthrough.
+- Zero-config placements: `<EzoicAd location="under_first_paragraph" />` resolves
+  a semantic location name to a reserved 900-range id via
+  `ezstandalone.GetGeneratedIdAsync` when the bundle is loaded, falling back to
+  the documented static id→location map when it is not. Supports every documented
+  location name and its aliases. `EzoicAd` now takes either `id` or `location`
+  (mutually exclusive). New exports: `resolveGeneratedId`,
+  `resolveLocationIdFromMap`, `isKnownLocation`, `ID_TO_LOCATION`,
+  `LOCATION_ALIASES`, and the `EzoicLocation` / `EzoicNamedLocation` types.
+  `GetGeneratedIdAsync` added to the `EzstandaloneApi` contract.
 
 [Unreleased]: https://github.com/ezoic/ezoic-react-sdk/commits/master

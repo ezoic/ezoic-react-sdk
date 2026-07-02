@@ -62,6 +62,13 @@ export interface EzstandaloneApi {
    * automatically on the first client-side URL change.
    */
   setIsSinglePageApplication?(val: boolean): void;
+  /**
+   * Resolves a semantic location name (e.g. `"under_first_paragraph"`) to a free
+   * reserved placeholder id, waiting for the placement service if needed. The
+   * result is a number, or a numeric string from the bundle's key lookup — the
+   * SDK coerces it to a number. Only present once `sa.min.js` initializes.
+   */
+  GetGeneratedIdAsync?(locationName: string): Promise<number | string>;
 }
 
 /**

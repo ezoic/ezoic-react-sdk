@@ -155,6 +155,15 @@ export function acquirePlaceholder(placeholder: EzoicShowAdsPlaceholder): boolea
 }
 
 /**
+ * Whether an id is currently owned by a mounted `<EzoicAd>`. Lets the zero-config
+ * location resolver pick a free id for repeated locations (see
+ * {@link ./generatedId}).
+ */
+export function isPlaceholderOwned(id: number): boolean {
+  return ownedIds.has(id);
+}
+
+/**
  * Releases an owned `<EzoicAd>` id on unmount. If the id is still waiting in the
  * current batch it never reached `showAds`, so it is simply dropped. Otherwise
  * the placeholder was shown and is torn down with `destroyPlaceholders(id)`.

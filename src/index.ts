@@ -12,6 +12,19 @@ export type { EzoicAdProps } from './EzoicAd';
 export { useEzoicPageView } from './useEzoicPageView';
 export type { UseEzoicPageViewOptions } from './useEzoicPageView';
 export {
+  ID_TO_LOCATION,
+  LOCATION_ALIASES,
+  isKnownLocation,
+  resolveLocationIdFromMap,
+} from './locations';
+export type {
+  EzoicLocation,
+  EzoicNamedLocation,
+  EzoicLocationAlias,
+  EzoicIncontentLocation,
+} from './locations';
+export { resolveGeneratedId, LOCATION_FALLBACK_MS } from './generatedId';
+export {
   showAds,
   displayMore,
   destroyPlaceholders,

@@ -12,8 +12,9 @@ hand-writing the raw snippets.
 > out and may change before `1.0.0`. This release ships the package foundation,
 > `<EzoicProvider>` for consent + script management, the `<EzoicAd>` display
 > component with batched `showAds` and the `useEzoic()` ad-serving passthroughs,
-> and single-page-app routing (`useEzoicPageView`). Zero-config location
-> placements, rewarded ads, and video land in subsequent releases (see
+> single-page-app routing (`useEzoicPageView`), and zero-config location
+> placements (`<EzoicAd location="…" />`). Rewarded ads and video land in
+> subsequent releases (see
 > [Roadmap](#roadmap)). Follow
 > [Ezoic Ads integration docs](https://docs.ezoic.com/docs/ezoicads/integration/)
 > for the underlying behavior.
@@ -142,6 +143,48 @@ call before the bundle finishes loading. `isEzoicUser(percentage?, callback?)`
 returns `boolean | undefined` — `undefined` until the bundle is loaded; pass a
 callback to be notified once it resolves.
 
+### Zero-config placements
+
+Instead of picking numeric ids, name a semantic position and let Ezoic choose a
+reserved id in the 900–999 range:
+
+```tsx
+import { EzoicProvider, EzoicAd } from '@ezoic/react-sdk';
+
+export default function Article() {
+  return (
+    <EzoicProvider>
+      <EzoicAd location="top_of_page" />
+      <p>…intro…</p>
+      <EzoicAd location="under_first_paragraph" />
+      <p>…more content…</p>
+      <EzoicAd location="mid_content" />
+    </EzoicProvider>
+  );
+}
+```
+
+Behavior:
+
+- **Runtime resolution.** When the bundle is loaded, the id is resolved with
+  `ezstandalone.GetGeneratedIdAsync`, which allocates a free id on the page (so
+  repeated locations get distinct ids). Until then the id is unknown, so a
+  `location` placeholder renders once resolved on the client — it is not present
+  in server-rendered HTML (use a numeric `id` for an SSR placeholder).
+- **Static fallback.** If the bundle never loads, the SDK resolves the name from
+  the documented id→location map so the placeholder still renders.
+- **Documented names + aliases.** All names on the
+  [Ezoic integration docs](https://docs.ezoic.com/docs/ezoicads/integration/) are
+  supported — `top_of_page`, `under_first_paragraph`, `under_second_paragraph`,
+  `mid_content`, the `sidebar_*` family, `incontent_5`…`incontent_88`, and
+  aliases like `incontent_1`. An unknown name logs an error and renders nothing.
+- **Either `id` or `location`.** Provide one, not both. `required` / `sizes`
+  work the same as for numeric placeholders.
+
+For custom containers you can resolve an id yourself with
+`resolveGeneratedId(location)` (returns a promise), or use the pure
+`resolveLocationIdFromMap(location)` and the exported `ID_TO_LOCATION` map.
+
 ### Single-page-app routing
 
 In a single-page app, the browser never does a full page load between routes, so
@@ -249,29 +292,34 @@ function AdSlot({ id }: { id: number }) {
 
 ## API
 
-| Export                                | Description                                                                                                                                                                            |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<EzoicProvider singlePageApp?>`      | Injects the consent + `sa.min.js` scripts, marks SPA mode at boot (default on), and provides SDK context.                                                                              |
-| `<EzoicAd id required? sizes?>`       | Renders a bare display placeholder div and requests it via batched `showAds`.                                                                                                          |
-| `useEzoic()`                          | Hook returning `{ isReady, push, showAds, displayMore, destroyPlaceholders, destroyAll, refreshAds, isEzoicUser, setIsSinglePageApplication }`. Must be used inside `<EzoicProvider>`. |
-| `useEzoicPageView(pageKey, { ids? })` | On `pageKey` change, destroys the departing route's ids then `showAds` the new ids (or `destroyAll()` + `showAds()` when `ids` is omitted). Fires nothing on first render.             |
-| `showAds(...placeholders)`            | Batched request for ids or `{ id, required?, sizes? }` objects; queues on `cmd`.                                                                                                       |
-| `displayMore(...ids)`                 | Reveals additional placeholders (dynamic content); queues on `cmd`.                                                                                                                    |
-| `destroyPlaceholders(...ids)`         | Tears down the given placeholders; queues on `cmd`.                                                                                                                                    |
-| `destroyAll()`                        | Tears down every placeholder; queues on `cmd`.                                                                                                                                         |
-| `refreshAds(...ids)`                  | Refreshes the given (or all) placeholders; queues on `cmd`.                                                                                                                            |
-| `isEzoicUser(pct?, cb?)`              | `boolean \| undefined` (undefined until loaded); pass a callback to resolve async.                                                                                                     |
-| `setIsSinglePageApplication(bool)`    | Marks the page as a single-page app; queues on `cmd`. Called at boot by the provider.                                                                                                  |
-| `ensureEzoicScripts(opts)`            | Imperative, order-safe, idempotent script injection (advanced / non-React).                                                                                                            |
-| `pushToEzoicCmd(fn)`                  | Queues a command on `window.ezstandalone.cmd`; no-op on the server.                                                                                                                    |
-| `CMP_SCRIPT_URL_1/2`                  | The Gatekeeper consent (CMP) script URLs.                                                                                                                                              |
-| `SA_SCRIPT_URL`                       | The `sa.min.js` standalone bundle URL.                                                                                                                                                 |
-| `placeholderDomId(id)`                | Builds `ezoic-pub-ad-placeholder-<id>`. Throws `RangeError` on an invalid id.                                                                                                          |
-| `isValidPlaceholderId(id)`            | Type guard for a scannable display placeholder id (integer 1–999).                                                                                                                     |
-| `EZOIC_PLACEHOLDER_PREFIX`            | The `ezoic-pub-ad-placeholder-` DOM id prefix.                                                                                                                                         |
-| `MIN_PLACEHOLDER_ID`                  | `1` — lowest scannable placeholder id.                                                                                                                                                 |
-| `MAX_PLACEHOLDER_ID`                  | `999` — highest scannable placeholder id.                                                                                                                                              |
-| `VERSION`                             | The installed SDK version string.                                                                                                                                                      |
+| Export                                    | Description                                                                                                                                                                            |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<EzoicProvider singlePageApp?>`          | Injects the consent + `sa.min.js` scripts, marks SPA mode at boot (default on), and provides SDK context.                                                                              |
+| `<EzoicAd id\|location required? sizes?>` | Renders a bare display placeholder div and requests it via batched `showAds`. Pass a numeric `id` (1–999) or a semantic `location` name (zero-config, resolved to a 900-range id).     |
+| `useEzoic()`                              | Hook returning `{ isReady, push, showAds, displayMore, destroyPlaceholders, destroyAll, refreshAds, isEzoicUser, setIsSinglePageApplication }`. Must be used inside `<EzoicProvider>`. |
+| `useEzoicPageView(pageKey, { ids? })`     | On `pageKey` change, destroys the departing route's ids then `showAds` the new ids (or `destroyAll()` + `showAds()` when `ids` is omitted). Fires nothing on first render.             |
+| `showAds(...placeholders)`                | Batched request for ids or `{ id, required?, sizes? }` objects; queues on `cmd`.                                                                                                       |
+| `displayMore(...ids)`                     | Reveals additional placeholders (dynamic content); queues on `cmd`.                                                                                                                    |
+| `destroyPlaceholders(...ids)`             | Tears down the given placeholders; queues on `cmd`.                                                                                                                                    |
+| `destroyAll()`                            | Tears down every placeholder; queues on `cmd`.                                                                                                                                         |
+| `refreshAds(...ids)`                      | Refreshes the given (or all) placeholders; queues on `cmd`.                                                                                                                            |
+| `isEzoicUser(pct?, cb?)`                  | `boolean \| undefined` (undefined until loaded); pass a callback to resolve async.                                                                                                     |
+| `setIsSinglePageApplication(bool)`        | Marks the page as a single-page app; queues on `cmd`. Called at boot by the provider.                                                                                                  |
+| `ensureEzoicScripts(opts)`                | Imperative, order-safe, idempotent script injection (advanced / non-React).                                                                                                            |
+| `pushToEzoicCmd(fn)`                      | Queues a command on `window.ezstandalone.cmd`; no-op on the server.                                                                                                                    |
+| `CMP_SCRIPT_URL_1/2`                      | The Gatekeeper consent (CMP) script URLs.                                                                                                                                              |
+| `SA_SCRIPT_URL`                           | The `sa.min.js` standalone bundle URL.                                                                                                                                                 |
+| `placeholderDomId(id)`                    | Builds `ezoic-pub-ad-placeholder-<id>`. Throws `RangeError` on an invalid id.                                                                                                          |
+| `isValidPlaceholderId(id)`                | Type guard for a scannable display placeholder id (integer 1–999).                                                                                                                     |
+| `resolveGeneratedId(location)`            | Resolves a location name to a 900-range id via `GetGeneratedIdAsync`, falling back to the static map. Returns a promise.                                                               |
+| `resolveLocationIdFromMap(location)`      | Pure static resolver: location name → 900-range id from `ID_TO_LOCATION` (no bundle needed).                                                                                           |
+| `isKnownLocation(name)`                   | Type guard for a documented location name or alias.                                                                                                                                    |
+| `ID_TO_LOCATION`                          | The documented 900–999 id→location map (read-only).                                                                                                                                    |
+| `LOCATION_ALIASES`                        | Read-only map of location-name aliases to their canonical names.                                                                                                                       |
+| `EZOIC_PLACEHOLDER_PREFIX`                | The `ezoic-pub-ad-placeholder-` DOM id prefix.                                                                                                                                         |
+| `MIN_PLACEHOLDER_ID`                      | `1` — lowest scannable placeholder id.                                                                                                                                                 |
+| `MAX_PLACEHOLDER_ID`                      | `999` — highest scannable placeholder id.                                                                                                                                              |
+| `VERSION`                                 | The installed SDK version string.                                                                                                                                                      |
 
 ## Roadmap
 
@@ -279,10 +327,10 @@ function AdSlot({ id }: { id: number }) {
 - [x] `<EzoicProvider>` — consent + `sa.min.js` script management
 - [x] `<EzoicAd>` display placeholders with batched `showAds`
 - [x] Single-page-app routing helpers (`useEzoicPageView`)
-- [ ] Zero-config location placements
+- [x] Zero-config location placements (`<EzoicAd location="…" />`)
 - [ ] Consent + config passthroughs
 - [ ] Rewarded ads
-- [ ] Video (Ezoic + Humix)
+- [ ] Video (Ezoic + Open Video)
 - [ ] Docs site + example app
 
 ## Development
