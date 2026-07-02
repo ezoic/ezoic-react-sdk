@@ -157,6 +157,180 @@ export interface EzstandaloneApi {
   setOutstreamAllowed?(allowed: boolean, options?: Record<string, unknown>): Promise<boolean>;
   /** Whether floating outstream is currently allowed. */
   isOutstreamAllowed?(): boolean;
+  /**
+   * Configures the site-wide rewarded-ad formats (anchor, interstitial, video,
+   * side rails) and triggers the rewarded slot. Defaults to all four enabled.
+   * Present once `sa.min.js` initializes.
+   */
+  initRewardedAds?(placements?: EzoicRewardedPlacements): void;
+}
+
+// ---------------------------------------------------------------------------
+// Rewarded ads (`window.ezRewardedAds`).
+//
+// Rewarded ads are driven by a SEPARATE bundle loaded from a site-specific
+// domain-handler host (`{host}/porpoiseant/ezadloadrewarded.js`), with its own
+// `cmd` queue independent of `ezstandalone.cmd`. Every method is callback-based
+// (none returns a value), so the SDK wraps them as promises. Shapes below match
+// the verified rewarded API.
+// ---------------------------------------------------------------------------
+
+/**
+ * Site-wide rewarded placement toggles for
+ * {@link EzstandaloneApi.initRewardedAds}. Every field defaults to `true`.
+ */
+export interface EzoicRewardedPlacements {
+  /** Enable the anchor ad. */
+  anchor?: boolean;
+  /** Enable the interstitial format. */
+  interstitial?: boolean;
+  /** Enable floating outstream video. */
+  video?: boolean;
+  /** Enable the left and right side rails. */
+  sideRails?: boolean;
+}
+
+/** Config for {@link EzRewardedAdsApi.request}. */
+export interface EzoicRewardedRequestConfig {
+  /** Minimum floor price for the ad. `null` (default) uses the domain config. */
+  minCPM?: number | null;
+  /** Type of reward to grant (e.g. `"coins"`). */
+  rewardType?: string;
+  /** Amount of reward to grant (e.g. `100`). */
+  rewardAmount?: number;
+}
+
+/** Config for {@link EzRewardedAdsApi.show}. */
+export interface EzoicRewardedShowConfig {
+  /** Reward name for analytics tracking. */
+  rewardName?: string;
+  /** Arbitrary user information passed through for tracking. */
+  userInfo?: Record<string, unknown>;
+}
+
+/** Config for {@link EzRewardedAdsApi.requestAndShow}. */
+export interface EzoicRewardedRequestAndShowConfig extends EzoicRewardedRequestConfig {
+  /** Reward name for analytics tracking. */
+  rewardName?: string;
+  /** Always invoke the callback, even when the reward is not granted. */
+  alwaysCallback?: boolean;
+  /** Grant the reward even when the ad fails to fill. */
+  rewardOnNoFill?: boolean;
+  /** Show a loading overlay while the ad is requested. */
+  loadingOverlay?: boolean;
+}
+
+/** Customizable overlay text for {@link EzRewardedAdsApi.requestWithOverlay}. */
+export interface EzoicRewardedOverlayText {
+  /** Header text for the call-to-action modal. */
+  header?: string;
+  /** Body lines explaining the reward (one string per line). */
+  body?: string[];
+  /** Accept button text. */
+  accept?: string;
+  /** Cancel button text. */
+  cancel?: string;
+}
+
+/** Config for {@link EzRewardedAdsApi.requestWithOverlay}. */
+export interface EzoicRewardedOverlayConfig extends EzoicRewardedRequestAndShowConfig {
+  /** Lock page scrolling while the overlay is shown. */
+  lockScroll?: boolean;
+  /** Skip the call-to-action overlay and show the ad immediately. */
+  dontAsk?: boolean;
+}
+
+/** Call-to-action modal config for {@link EzoicContentLockerConfig}. */
+export interface EzoicContentLockerCallToAction {
+  /** Disable the call-to-action modal entirely. */
+  disabled?: boolean;
+  /** Header text. */
+  header?: string;
+  /** Body text. */
+  body?: string;
+  /** Button text. */
+  button?: string;
+}
+
+/** Config for {@link EzRewardedAdsApi.contentLocker}. */
+export interface EzoicContentLockerConfig {
+  /** Show a loading overlay while preparing the ad. Defaults to `true`. */
+  loadingOverlay?: boolean;
+  /** Called with the request result once the ad is ready to display. */
+  readyCallback?: ((result: EzoicRewardedRequestOutcome) => void) | null;
+  /** Reward name for analytics tracking. */
+  rewardName?: string;
+  /** Minimum floor price for the ad. `null` (default) uses the domain config. */
+  minCPM?: number | null;
+  /** Type of reward to grant. */
+  rewardType?: string;
+  /** Amount of reward to grant. */
+  rewardAmount?: number;
+  /** Call-to-action modal configuration. */
+  callToAction?: EzoicContentLockerCallToAction;
+}
+
+/**
+ * Result delivered to a {@link EzRewardedAdsApi.request} callback. `status` is
+ * `true` when an ad was successfully pre-fetched.
+ */
+export interface EzoicRewardedRequestOutcome {
+  /** Whether the ad request succeeded (an ad is ready to show). */
+  status: boolean;
+  /** Human-readable status message. */
+  msg: string;
+  /** Ad metadata, present when an ad filled. */
+  adInfo?: Record<string, unknown>;
+}
+
+/**
+ * Result delivered to a `show` / `requestAndShow` / `requestWithOverlay`
+ * callback. `reward` is `true` only when the visitor earned the reward.
+ */
+export interface EzoicRewardedShowOutcome {
+  /** Whether the ad flow completed without an error (an ad was shown or handled). */
+  status: boolean;
+  /** Whether the reward was granted (ad watched to completion, or `rewardOnNoFill`). */
+  reward: boolean;
+  /** Human-readable status message (e.g. `"ad watched"`, `"user cancelled"`). */
+  msg: string;
+  /** Ad metadata, present when an ad was shown. */
+  adInfo?: Record<string, unknown>;
+  /** User information echoed back, present when the reward was granted. */
+  userInfo?: Record<string, unknown>;
+}
+
+/**
+ * The subset of `window.ezRewardedAds` this SDK drives. Methods are optional:
+ * they only exist after the rewarded loader script initializes. Calls go through
+ * the {@link EzoicCommandQueue}, so they run once the methods exist.
+ */
+export interface EzRewardedAdsApi {
+  cmd: EzoicCommandQueue;
+  /** `true` once the rewarded loader has finished initializing. */
+  ready?: boolean;
+  /** Records that a rewarded implementation is present (tracking only). */
+  register?(): void;
+  /** Pre-fetches a rewarded ad without showing it. */
+  request?(
+    callback: (data: EzoicRewardedRequestOutcome) => void,
+    config?: EzoicRewardedRequestConfig,
+  ): void;
+  /** Shows a previously requested ad. Must follow a successful `request`. */
+  show?(callback: (data: EzoicRewardedShowOutcome) => void, config?: EzoicRewardedShowConfig): void;
+  /** Requests and immediately shows an ad with no call-to-action modal. */
+  requestAndShow?(
+    callback: (data: EzoicRewardedShowOutcome) => void,
+    config?: EzoicRewardedRequestAndShowConfig,
+  ): void;
+  /** Requests and shows an ad behind a customizable call-to-action overlay. */
+  requestWithOverlay?(
+    callback: (data: EzoicRewardedShowOutcome) => void,
+    text?: EzoicRewardedOverlayText,
+    config?: EzoicRewardedOverlayConfig,
+  ): void;
+  /** Gates an action (URL redirect or function) behind watching a rewarded ad. */
+  contentLocker?(action: string | (() => void), config?: EzoicContentLockerConfig): void;
 }
 
 /**
@@ -169,4 +343,10 @@ export interface EzoicWindow {
    * active. {@link useEzoicConsent} reads consent state through it.
    */
   __tcfapi?: TcfApi;
+  /**
+   * The rewarded-ads global, created by the site-specific rewarded loader script
+   * (`{host}/porpoiseant/ezadloadrewarded.js`). {@link useEzoicRewarded} and the
+   * rewarded passthroughs drive it through its own `cmd` queue.
+   */
+  ezRewardedAds?: EzRewardedAdsApi;
 }

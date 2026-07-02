@@ -5,6 +5,14 @@ import { describe, expect, it } from 'vitest';
 import { EzoicProvider, useEzoic } from './EzoicProvider';
 import { EzoicAd } from './EzoicAd';
 import { useEzoicPageView } from './useEzoicPageView';
+import { useEzoicRewarded } from './useEzoicRewarded';
+import {
+  ensureRewardedScript,
+  initRewardedAds,
+  registerRewarded,
+  requestRewarded,
+  rewardedContentLocker,
+} from './rewarded';
 
 // These tests run in the Node environment (no jsdom): there is no `window` or
 // `document`. They prove the provider renders on the server without touching
@@ -53,5 +61,29 @@ describe('server-side rendering', () => {
     expect(html).toContain('pageview-ok');
     // The effect never runs on the server, so no ad calls and no scripts.
     expect(html).not.toContain('ezojs.com');
+  });
+
+  it('renders a child calling useEzoicRewarded without throwing and reports not-ready', () => {
+    function Child(): string {
+      const { ready, initiated } = useEzoicRewarded({
+        loaderUrl: 'https://go.example-host.com/porpoiseant/ezadloadrewarded.js',
+      });
+      return `rewarded:${String(ready)}:${String(initiated)}`;
+    }
+    const html = renderToString(createElement(EzoicProvider, null, createElement(Child)));
+    expect(html).toContain('rewarded:false:false');
+  });
+
+  it('rewarded fire-and-forget passthroughs are safe no-ops on the server', () => {
+    expect(() => registerRewarded()).not.toThrow();
+    expect(() =>
+      ensureRewardedScript('https://go.example-host.com/porpoiseant/ezadloadrewarded.js'),
+    ).not.toThrow();
+    expect(() => rewardedContentLocker('https://example.com/premium')).not.toThrow();
+    expect(() => initRewardedAds({ anchor: true })).not.toThrow();
+  });
+
+  it('rewarded promise wrappers reject on the server rather than touching window', async () => {
+    await expect(requestRewarded()).rejects.toThrow(/only available in the browser/);
   });
 });

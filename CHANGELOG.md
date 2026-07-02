@@ -70,5 +70,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `isOutstreamAllowed()`. The `is*` / `has*` getters return `boolean |
 undefined` (undefined until `sa.min.js` loads). Added `EzoicConfig`, `TcfData`,
   and `TcfApi` type exports and the corresponding `EzstandaloneApi` methods.
+- Rewarded ads: `useEzoicRewarded({ loaderUrl? })` wraps the separate rewarded
+  bundle (`window.ezRewardedAds`, its own `cmd` queue) with promise-based
+  methods — `request` → `{ status, msg, adInfo? }`; `show` / `requestAndShow` /
+  `requestWithOverlay` → `{ status, reward, msg, adInfo?, userInfo? }` — plus
+  `contentLocker`, `register`, and `initRewardedAds` (site-wide format setup via
+  `ezstandalone.initRewardedAds`; every format defaults to enabled and only an
+  explicit `false` disables one). The hook injects the site-specific loader
+  (`{host}/porpoiseant/ezadloadrewarded.js`) idempotently and surfaces the
+  `ezRewardedInitiated` / `ezRewardedDisplayed` / `ezRewardedClosed` window events
+  as `{ ready, initiated, displayed, closed, lastEvent }`. SSR-safe: the wrappers
+  reject with a browser-only error on the server and calls queue when the loader
+  has not loaded. Standalone exports: `requestRewarded`, `showRewarded`,
+  `requestAndShowRewarded`, `requestRewardedWithOverlay`, `rewardedContentLocker`,
+  `registerRewarded`, `initRewardedAds`, `ensureRewardedScript`,
+  `pushToRewardedCmd`, `REWARDED_EVENTS`, and the `EzRewardedAdsApi` /
+  `EzoicRewarded*` / `EzoicContentLocker*` type contracts. `initRewardedAds` added
+  to the `EzstandaloneApi` contract and `ezRewardedAds` to `EzoicWindow`.
 
 [Unreleased]: https://github.com/ezoic/ezoic-react-sdk/commits/master

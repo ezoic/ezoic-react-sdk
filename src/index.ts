@@ -49,6 +49,24 @@ export {
 export { useEzoicConsent } from './useEzoicConsent';
 export type { EzoicConsentState } from './useEzoicConsent';
 export {
+  REWARDED_EVENTS,
+  ensureRewardedScript,
+  pushToRewardedCmd,
+  registerRewarded,
+  requestRewarded,
+  showRewarded,
+  requestAndShowRewarded,
+  requestRewardedWithOverlay,
+  rewardedContentLocker,
+  initRewardedAds,
+} from './rewarded';
+export { useEzoicRewarded } from './useEzoicRewarded';
+export type {
+  EzoicRewardedState,
+  EzoicRewardedApi,
+  UseEzoicRewardedOptions,
+} from './useEzoicRewarded';
+export {
   CMP_SCRIPT_URL_1,
   CMP_SCRIPT_URL_2,
   SA_SCRIPT_URL,
@@ -65,5 +83,16 @@ export type {
   EzoicConfig,
   TcfData,
   TcfApi,
+  EzRewardedAdsApi,
+  EzoicRewardedPlacements,
+  EzoicRewardedRequestConfig,
+  EzoicRewardedShowConfig,
+  EzoicRewardedRequestAndShowConfig,
+  EzoicRewardedOverlayText,
+  EzoicRewardedOverlayConfig,
+  EzoicContentLockerConfig,
+  EzoicContentLockerCallToAction,
+  EzoicRewardedRequestOutcome,
+  EzoicRewardedShowOutcome,
 } from './types';
 export { VERSION } from './version';
