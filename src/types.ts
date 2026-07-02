@@ -36,6 +36,71 @@ export interface EzoicShowAdsPlaceholder {
 export type EzoicShowAdsArg = number | number[] | EzoicShowAdsPlaceholder;
 
 /**
+ * Publisher configuration accepted by `ezstandalone.config`. Only these keys are
+ * honored; the bundle logs an error and ignores anything else, so the SDK types
+ * the exact verified set. Every field is optional — pass only what you set.
+ *
+ * The public `config` wrapper does not return the stored config, so this SDK
+ * exposes `config()` as write-only (no getter). Apply configuration before the
+ * first `showAds` for it to affect that request.
+ */
+export interface EzoicConfig {
+  /** Anchor ad position (`saContext.ap`). Bundle default `"bottom"`. */
+  anchorAdPosition?: string;
+  /** Opt in to anchor ad expansion (`saContext.aae`). */
+  anchorAdExpansion?: boolean;
+  /** Disable Ezoic video (`saContext.dv`). */
+  disableVideo?: boolean;
+  /** Disable the interstitial format (`saContext.di`). */
+  disableInterstitial?: boolean;
+  /** Disable the left side rail (`saContext.dlr`). */
+  disableLeftSideRail?: boolean;
+  /** Disable the right side rail (`saContext.drr`). */
+  disableRightSideRail?: boolean;
+  /** Disable sidebar floating (`saContext.dsf`). */
+  disableSidebarFloating?: boolean;
+  /** Reserve placeholder space to reduce CLS (applied in `showAds`). */
+  reservePlaceholderSpace?: boolean;
+  /** Limit cookies (server-side effect). */
+  limitCookies?: boolean;
+  /** Enable the desktop vignette (`saContext.vd`). */
+  vignetteDesktop?: boolean;
+  /** Enable the mobile vignette (`saContext.vm`). */
+  vignetteMobile?: boolean;
+  /** Enable the tablet vignette (`saContext.vt`). */
+  vignetteTablet?: boolean;
+}
+
+/**
+ * A single IAB TCF v2.2 `TCData` payload delivered to an `addEventListener`
+ * callback. Only the fields this SDK surfaces are declared. See the IAB TCF v2.2
+ * CMP API spec.
+ */
+export interface TcfData {
+  /** The IAB TC string, when the CMP has one available. */
+  tcString?: string;
+  /** Whether GDPR applies to this visitor, per the CMP. */
+  gdprApplies?: boolean;
+  /** CMP lifecycle event: `"tcloaded" | "cmpuishown" | "useractioncomplete"`. */
+  eventStatus?: string;
+  /** CMP status, e.g. `"loaded"`. */
+  cmpStatus?: string;
+  /** Listener id assigned by the CMP; pass it to `removeEventListener`. */
+  listenerId?: number;
+}
+
+/**
+ * The IAB TCF v2.2 `window.__tcfapi` function, present when a TCF CMP (such as
+ * Ezoic's Gatekeeper CMP) is active on the page.
+ */
+export type TcfApi = (
+  command: string,
+  version: number,
+  callback: (tcData: TcfData, success: boolean) => void,
+  parameter?: number | string,
+) => void;
+
+/**
  * The subset of the global `window.ezstandalone` object this SDK reads or drives.
  * Ad-serving methods are optional: they are defined by `sa.min.js` once it
  * loads. Calls the SDK makes go through the {@link EzoicCommandQueue}, so they
@@ -69,6 +134,29 @@ export interface EzstandaloneApi {
    * SDK coerces it to a number. Only present once `sa.min.js` initializes.
    */
   GetGeneratedIdAsync?(locationName: string): Promise<number | string>;
+  /**
+   * Applies publisher {@link EzoicConfig}. Write-only: the public wrapper does
+   * not return the stored config. Unknown keys are ignored by the bundle.
+   */
+  config?(options: EzoicConfig): void;
+  /** Enables Ezoic-managed consent (sets `manageConsent = true`). */
+  enableConsent?(): void;
+  /** Disables personalized statistics for this visitor (`saContext.dps`). */
+  setDisablePersonalizedStatistics?(disable: boolean): void;
+  /** Disables personalized ads for this visitor (`saContext.dpa`). */
+  setDisablePersonalizedAds?(disable: boolean): void;
+  /** Enables or disables the Ezoic anchor ad (`saContext.a`). */
+  setEzoicAnchorAd?(enabled: boolean): void;
+  /** Whether the visitor previously closed the anchor ad (reads `ez_anchor_closed`). */
+  hasAnchorAdBeenClosed?(): boolean;
+  /** Allows or disallows the interstitial format. */
+  setInterstitialAllowed?(allowed: boolean, options?: Record<string, unknown>): void;
+  /** Whether the interstitial format is currently allowed. */
+  isInterstitialAllowed?(): boolean;
+  /** Allows or disallows floating outstream. Resolves to the resulting allowed state. */
+  setOutstreamAllowed?(allowed: boolean, options?: Record<string, unknown>): Promise<boolean>;
+  /** Whether floating outstream is currently allowed. */
+  isOutstreamAllowed?(): boolean;
 }
 
 /**
@@ -76,4 +164,9 @@ export interface EzstandaloneApi {
  */
 export interface EzoicWindow {
   ezstandalone?: EzstandaloneApi;
+  /**
+   * IAB TCF v2.2 API, present when a TCF CMP (e.g. Ezoic's Gatekeeper CMP) is
+   * active. {@link useEzoicConsent} reads consent state through it.
+   */
+  __tcfapi?: TcfApi;
 }

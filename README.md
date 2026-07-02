@@ -270,6 +270,78 @@ const { showAds } = useEzoic();
 showAds(201, 202);
 ```
 
+### Consent & privacy
+
+Ezoic's Gatekeeper CMP is injected first by `<EzoicProvider>` and manages consent
+automatically. These passthroughs let you drive Ezoic's consent behavior, and
+`useEzoicConsent()` reads live IAB TCF v2.2 consent state:
+
+```tsx
+import {
+  enableConsent,
+  setDisablePersonalizedStatistics,
+  setDisablePersonalizedAds,
+  useEzoicConsent,
+} from '@ezoic/react-sdk';
+
+// Signal that Ezoic manages consent for this visitor:
+enableConsent();
+// Honor a "do not sell/share" style choice:
+setDisablePersonalizedAds(true);
+setDisablePersonalizedStatistics(true);
+
+function ConsentGate({ children }: { children: React.ReactNode }) {
+  const { tcfReady, gdprApplies, tcString } = useEzoicConsent();
+  if (gdprApplies && !tcfReady) return <p>Loading consent…</p>;
+  return <>{children}</>;
+}
+```
+
+`useEzoicConsent()` returns `{ cmpPresent, tcfReady, tcString, gdprApplies,
+eventStatus, cmpStatus }`. It subscribes via `window.__tcfapi('addEventListener',
+…)` when a TCF CMP is present, updates as the consent string changes, and removes
+its listener on unmount. It is SSR-safe (returns `{ cmpPresent: false, tcfReady:
+false }` on the server and until a CMP appears) and never throws when no CMP is
+present.
+
+### Configuration & format toggles
+
+`config()` applies publisher configuration. Only the documented keys are accepted
+(TypeScript enforces this; unknown keys are dropped with a warning). It is
+**write-only** — the bundle's public wrapper does not return the stored config.
+Call it **before** the first `showAds` so the config affects that request:
+
+```tsx
+import {
+  config,
+  setEzoicAnchorAd,
+  setInterstitialAllowed,
+  isInterstitialAllowed,
+} from '@ezoic/react-sdk';
+
+config({
+  anchorAdPosition: 'top',
+  reservePlaceholderSpace: true,
+  disableSidebarFloating: true,
+});
+
+// Format toggles:
+setEzoicAnchorAd(true);
+setInterstitialAllowed(false);
+const allowed = isInterstitialAllowed(); // boolean | undefined (undefined until sa.min.js loads)
+```
+
+Accepted `config` keys: `anchorAdPosition`, `anchorAdExpansion`, `disableVideo`,
+`disableInterstitial`, `disableLeftSideRail`, `disableRightSideRail`,
+`disableSidebarFloating`, `reservePlaceholderSpace`, `limitCookies`,
+`vignetteDesktop`, `vignetteMobile`, `vignetteTablet`.
+
+The anchor / interstitial / outstream toggles are `setEzoicAnchorAd(bool)`,
+`hasAnchorAdBeenClosed()`, `setInterstitialAllowed(bool, opts?)`,
+`isInterstitialAllowed()`, `setOutstreamAllowed(bool, opts?)` (returns a promise),
+and `isOutstreamAllowed()`. The `is*` / `has*` getters return `boolean |
+undefined` (undefined until `sa.min.js` loads).
+
 ### Placeholder helpers
 
 Most apps should use `<EzoicAd>` above. These low-level helpers are exported for
@@ -305,6 +377,18 @@ function AdSlot({ id }: { id: number }) {
 | `refreshAds(...ids)`                      | Refreshes the given (or all) placeholders; queues on `cmd`.                                                                                                                            |
 | `isEzoicUser(pct?, cb?)`                  | `boolean \| undefined` (undefined until loaded); pass a callback to resolve async.                                                                                                     |
 | `setIsSinglePageApplication(bool)`        | Marks the page as a single-page app; queues on `cmd`. Called at boot by the provider.                                                                                                  |
+| `useEzoicConsent()`                       | Hook returning live IAB TCF v2.2 consent state `{ cmpPresent, tcfReady, tcString, gdprApplies, eventStatus, cmpStatus }` via `window.__tcfapi`. SSR-safe; never throws without a CMP.  |
+| `enableConsent()`                         | Signals that Ezoic manages consent for this visitor; queues on `cmd`.                                                                                                                  |
+| `setDisablePersonalizedStatistics(bool)`  | Disables/enables personalized statistics; queues on `cmd`.                                                                                                                             |
+| `setDisablePersonalizedAds(bool)`         | Disables/enables personalized ads; queues on `cmd`.                                                                                                                                    |
+| `config(options)`                         | Write-only publisher config. Only accepted keys are forwarded (unknown keys dropped with a warning). Call before the first `showAds`.                                                  |
+| `CONFIG_KEYS`                             | Read-only tuple of the accepted `config` keys.                                                                                                                                         |
+| `setEzoicAnchorAd(bool)`                  | Enables/disables the anchor ad; queues on `cmd`.                                                                                                                                       |
+| `hasAnchorAdBeenClosed()`                 | `boolean \| undefined` — whether the visitor closed the anchor ad (undefined until loaded).                                                                                            |
+| `setInterstitialAllowed(bool, opts?)`     | Allows/disallows the interstitial format; queues on `cmd`.                                                                                                                             |
+| `isInterstitialAllowed()`                 | `boolean \| undefined` — whether the interstitial is allowed (undefined until loaded).                                                                                                 |
+| `setOutstreamAllowed(bool, opts?)`        | Allows/disallows floating outstream. Returns `Promise<boolean \| undefined>` (resolves the bundle result, or `undefined` if queued before load).                                       |
+| `isOutstreamAllowed()`                    | `boolean \| undefined` — whether floating outstream is allowed (undefined until loaded).                                                                                               |
 | `ensureEzoicScripts(opts)`                | Imperative, order-safe, idempotent script injection (advanced / non-React).                                                                                                            |
 | `pushToEzoicCmd(fn)`                      | Queues a command on `window.ezstandalone.cmd`; no-op on the server.                                                                                                                    |
 | `CMP_SCRIPT_URL_1/2`                      | The Gatekeeper consent (CMP) script URLs.                                                                                                                                              |
@@ -328,7 +412,7 @@ function AdSlot({ id }: { id: number }) {
 - [x] `<EzoicAd>` display placeholders with batched `showAds`
 - [x] Single-page-app routing helpers (`useEzoicPageView`)
 - [x] Zero-config location placements (`<EzoicAd location="…" />`)
-- [ ] Consent + config passthroughs
+- [x] Consent + config passthroughs (`useEzoicConsent`, `config`, format toggles)
 - [ ] Rewarded ads
 - [ ] Video (Ezoic + Open Video)
 - [ ] Docs site + example app

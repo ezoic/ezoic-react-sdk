@@ -51,5 +51,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `resolveLocationIdFromMap`, `isKnownLocation`, `ID_TO_LOCATION`,
   `LOCATION_ALIASES`, and the `EzoicLocation` / `EzoicNamedLocation` types.
   `GetGeneratedIdAsync` added to the `EzstandaloneApi` contract.
+- Consent + config passthroughs: `enableConsent()`,
+  `setDisablePersonalizedStatistics(bool)`, `setDisablePersonalizedAds(bool)`,
+  and the `useEzoicConsent()` hook exposing live IAB TCF v2.2 consent state
+  (`cmpPresent`, `tcfReady`, `tcString`, `gdprApplies`, `eventStatus`,
+  `cmpStatus`) via `window.__tcfapi` — SSR-safe and a no-op when no CMP is
+  present.
+- Typed, write-only `config(options)` accepting the verified key set
+  (`anchorAdPosition`, `anchorAdExpansion`, `disableVideo`,
+  `disableInterstitial`, `disableLeftSideRail`, `disableRightSideRail`,
+  `disableSidebarFloating`, `reservePlaceholderSpace`, `limitCookies`,
+  `vignetteDesktop` / `vignetteMobile` / `vignetteTablet`); unknown keys are
+  dropped with a warning. Exposed write-only because the bundle's public
+  `config` wrapper does not return the stored config. `CONFIG_KEYS` is exported.
+- Format toggles: `setEzoicAnchorAd(bool)`, `hasAnchorAdBeenClosed()`,
+  `setInterstitialAllowed(bool, opts?)`, `isInterstitialAllowed()`,
+  `setOutstreamAllowed(bool, opts?)` (returns a promise), and
+  `isOutstreamAllowed()`. The `is*` / `has*` getters return `boolean |
+undefined` (undefined until `sa.min.js` loads). Added `EzoicConfig`, `TcfData`,
+  and `TcfApi` type exports and the corresponding `EzstandaloneApi` methods.
 
 [Unreleased]: https://github.com/ezoic/ezoic-react-sdk/commits/master

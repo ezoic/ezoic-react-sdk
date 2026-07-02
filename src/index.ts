@@ -34,6 +34,21 @@ export {
   setIsSinglePageApplication,
 } from './adManager';
 export {
+  enableConsent,
+  setDisablePersonalizedStatistics,
+  setDisablePersonalizedAds,
+  config,
+  CONFIG_KEYS,
+  setEzoicAnchorAd,
+  hasAnchorAdBeenClosed,
+  setInterstitialAllowed,
+  isInterstitialAllowed,
+  setOutstreamAllowed,
+  isOutstreamAllowed,
+} from './consentConfig';
+export { useEzoicConsent } from './useEzoicConsent';
+export type { EzoicConsentState } from './useEzoicConsent';
+export {
   CMP_SCRIPT_URL_1,
   CMP_SCRIPT_URL_2,
   SA_SCRIPT_URL,
@@ -47,5 +62,8 @@ export type {
   EzoicCommandQueue,
   EzoicShowAdsArg,
   EzoicShowAdsPlaceholder,
+  EzoicConfig,
+  TcfData,
+  TcfApi,
 } from './types';
 export { VERSION } from './version';
