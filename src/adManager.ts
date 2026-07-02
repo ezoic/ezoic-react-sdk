@@ -61,6 +61,19 @@ export function refreshAds(...ids: number[]): void {
 }
 
 /**
+ * Marks the page as a single-page application via
+ * `ezstandalone.setIsSinglePageApplication`. Call once at boot: afterwards the
+ * bundle routes a post-navigation `showAds` to its internal `refresh()`
+ * (new-pageview reload). Idempotent, and the bundle's SPAMonitor also sets this
+ * automatically on the first client-side URL change.
+ */
+export function setIsSinglePageApplication(val: boolean): void {
+  pushToEzoicCmd(() => {
+    getWindow()?.ezstandalone?.setIsSinglePageApplication?.(val);
+  });
+}
+
+/**
  * Reports whether the visitor is in the Ezoic-enabled A/B cohort.
  *
  * Returns the bundle's boolean result when `sa.min.js` has initialized. Before

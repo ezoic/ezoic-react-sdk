@@ -2,13 +2,30 @@ import { createElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, renderHook } from '@testing-library/react';
 import { EzoicProvider, useEzoic } from './EzoicProvider';
-import type { EzoicWindow } from './types';
+import { resetAdManagerState } from './adManager';
+import type { EzoicCommandQueue, EzoicWindow } from './types';
 
 function markerCount(marker: string): number {
   return document.querySelectorAll(`script[data-ezoic-sdk="${marker}"]`).length;
 }
 
+/** Installs a mock `window.ezstandalone` whose cmd queue runs commands immediately. */
+function installEzstandalone() {
+  const api = { setIsSinglePageApplication: vi.fn() };
+  (window as unknown as EzoicWindow).ezstandalone = {
+    cmd: {
+      push: (fn: () => void) => {
+        fn();
+        return 0;
+      },
+    } as unknown as EzoicCommandQueue,
+    ...api,
+  };
+  return api;
+}
+
 beforeEach(() => {
+  resetAdManagerState();
   document.head.innerHTML = '';
   document.body.innerHTML = '';
   delete (window as unknown as EzoicWindow).ezstandalone;
@@ -16,9 +33,11 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  resetAdManagerState();
   document.head.innerHTML = '';
   document.body.innerHTML = '';
   delete (window as unknown as EzoicWindow).ezstandalone;
+  vi.restoreAllMocks();
 });
 
 describe('EzoicProvider', () => {
@@ -46,6 +65,19 @@ describe('EzoicProvider', () => {
     );
     expect(getByText('child-content')).not.toBeNull();
   });
+
+  it('marks the page as a single-page application at boot by default', () => {
+    const api = installEzstandalone();
+    render(createElement(EzoicProvider, null, createElement('div')));
+    expect(api.setIsSinglePageApplication).toHaveBeenCalledTimes(1);
+    expect(api.setIsSinglePageApplication).toHaveBeenCalledWith(true);
+  });
+
+  it('does not set single-page mode when singlePageApp is false', () => {
+    const api = installEzstandalone();
+    render(createElement(EzoicProvider, { singlePageApp: false }, createElement('div')));
+    expect(api.setIsSinglePageApplication).not.toHaveBeenCalled();
+  });
 });
 
 describe('useEzoic', () => {
@@ -67,14 +99,17 @@ describe('useEzoic', () => {
       'destroyAll',
       'refreshAds',
       'isEzoicUser',
+      'setIsSinglePageApplication',
     ] as const) {
       expect(typeof result.current[name]).toBe('function');
     }
   });
 
   it('reports isReady true once mounted and queues commands via push', () => {
+    // singlePageApp={false} so the boot does not queue a setIsSinglePageApplication
+    // command; this keeps the assertion focused on `push` alone.
     const { result } = renderHook(() => useEzoic(), {
-      wrapper: ({ children }) => createElement(EzoicProvider, null, children),
+      wrapper: ({ children }) => createElement(EzoicProvider, { singlePageApp: false }, children),
     });
     expect(result.current.isReady).toBe(true);
 

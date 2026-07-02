@@ -4,6 +4,7 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { EzoicProvider, useEzoic } from './EzoicProvider';
 import { EzoicAd } from './EzoicAd';
+import { useEzoicPageView } from './useEzoicPageView';
 
 // These tests run in the Node environment (no jsdom): there is no `window` or
 // `document`. They prove the provider renders on the server without touching
@@ -40,6 +41,17 @@ describe('server-side rendering', () => {
     );
     expect(html).toContain('id="ezoic-pub-ad-placeholder-101"');
     // No script injection happens on the server.
+    expect(html).not.toContain('ezojs.com');
+  });
+
+  it('renders a child calling useEzoicPageView without throwing or touching window', () => {
+    function Child(): string {
+      useEzoicPageView('/initial-route', { ids: [101, 102] });
+      return 'pageview-ok';
+    }
+    const html = renderToString(createElement(EzoicProvider, null, createElement(Child)));
+    expect(html).toContain('pageview-ok');
+    // The effect never runs on the server, so no ad calls and no scripts.
     expect(html).not.toContain('ezojs.com');
   });
 });

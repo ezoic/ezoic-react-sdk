@@ -9,6 +9,8 @@ export { EzoicProvider, useEzoic } from './EzoicProvider';
 export type { EzoicProviderProps, EzoicContextValue } from './EzoicProvider';
 export { EzoicAd } from './EzoicAd';
 export type { EzoicAdProps } from './EzoicAd';
+export { useEzoicPageView } from './useEzoicPageView';
+export type { UseEzoicPageViewOptions } from './useEzoicPageView';
 export {
   showAds,
   displayMore,
@@ -16,6 +18,7 @@ export {
   destroyAll,
   refreshAds,
   isEzoicUser,
+  setIsSinglePageApplication,
 } from './adManager';
 export {
   CMP_SCRIPT_URL_1,

@@ -55,6 +55,13 @@ export interface EzstandaloneApi {
   refreshAds?(...ids: number[]): void;
   /** A/B helper: reports whether the visitor is in the Ezoic-enabled cohort. */
   isEzoicUser?(percentage?: number, callback?: (isUser: boolean) => void): boolean;
+  /**
+   * Marks the page as a single-page application. Once set, the bundle routes a
+   * post-navigation `showAds` to its internal `refresh()` (new-pageview reload)
+   * instead of a first load. Idempotent. The bundle's SPAMonitor also sets this
+   * automatically on the first client-side URL change.
+   */
+  setIsSinglePageApplication?(val: boolean): void;
 }
 
 /**

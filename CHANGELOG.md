@@ -25,5 +25,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ensureEzoicScripts` and `pushToEzoicCmd` imperative helpers, the
   Ezoic script URL constants (`CMP_SCRIPT_URL_1/2`, `SA_SCRIPT_URL`), and the
   `EzoicWindow` / `EzstandaloneApi` / `EzoicCommandQueue` type contracts.
+- `<EzoicAd id required? sizes?>` display component: renders a bare
+  `ezoic-pub-ad-placeholder-<id>` div (never styled), coalesces every ad
+  mounting in the same React commit into one `showAds(...)` call, and calls
+  `destroyPlaceholders(id)` on unmount. Validates ids (integers 1–999; invalid
+  ids render nothing and log rather than throw) and guards duplicate-mounted ids.
+- `useEzoic()` ad-serving passthroughs — `showAds`, `displayMore`,
+  `destroyPlaceholders`, `destroyAll`, `refreshAds`, `isEzoicUser` — each queued
+  on `ezstandalone.cmd` so they are safe to call before the bundle loads.
+- Single-page-app routing: `<EzoicProvider>` marks SPA mode at boot via
+  `setIsSinglePageApplication(true)` (opt out with `singlePageApp={false}`), and
+  the new `useEzoicPageView(pageKey, { ids? })` hook destroys the departing
+  route's placeholders then requests the new route's placeholders on navigation
+  (or `destroyAll()` + `showAds()` when `ids` is omitted). Fires nothing on first
+  render and never calls `newPage()` itself, coalescing with the bundle's
+  built-in navigation monitor. README adds React Router, Next.js, and
+  infinite-scroll recipes. `setIsSinglePageApplication` is also exported as a
+  standalone passthrough.
 
 [Unreleased]: https://github.com/ezoic/ezoic-react-sdk/commits/master

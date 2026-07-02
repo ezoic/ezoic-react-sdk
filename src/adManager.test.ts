@@ -8,6 +8,7 @@ import {
   refreshAds,
   releasePlaceholder,
   resetAdManagerState,
+  setIsSinglePageApplication,
   showAds,
 } from './adManager';
 import type { EzoicCommandQueue, EzoicWindow } from './types';
@@ -21,6 +22,7 @@ function installEzstandalone() {
     destroyAll: vi.fn(),
     refreshAds: vi.fn(),
     isEzoicUser: vi.fn(() => true),
+    setIsSinglePageApplication: vi.fn(),
   };
   (window as unknown as EzoicWindow).ezstandalone = {
     cmd: {
@@ -76,6 +78,13 @@ describe('passthroughs', () => {
     expect(api.destroyPlaceholders).toHaveBeenCalledWith(101);
     expect(api.destroyAll).toHaveBeenCalledWith();
     expect(api.refreshAds).toHaveBeenCalledWith(105);
+  });
+
+  it('setIsSinglePageApplication forwards the flag to ezstandalone', () => {
+    const api = installEzstandalone();
+    setIsSinglePageApplication(true);
+    expect(api.setIsSinglePageApplication).toHaveBeenCalledTimes(1);
+    expect(api.setIsSinglePageApplication).toHaveBeenCalledWith(true);
   });
 
   it('isEzoicUser returns the bundle result and forwards percentage + callback', () => {

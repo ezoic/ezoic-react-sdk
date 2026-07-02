@@ -6,6 +6,7 @@ import {
   displayMore,
   isEzoicUser,
   refreshAds,
+  setIsSinglePageApplication,
   showAds,
 } from './adManager';
 import type { EzoicShowAdsArg } from './types';
@@ -44,6 +45,12 @@ export interface EzoicContextValue {
    * the answer is known.
    */
   isEzoicUser: (percentage?: number, callback?: (isUser: boolean) => void) => boolean | undefined;
+  /**
+   * Marks the page as a single-page application. The provider calls this at
+   * boot unless {@link EzoicProviderProps.singlePageApp} is `false`; exposed here
+   * for imperative flows that need to toggle it later.
+   */
+  setIsSinglePageApplication: (val: boolean) => void;
 }
 
 const EzoicContext = createContext<EzoicContextValue | null>(null);
@@ -51,6 +58,14 @@ const EzoicContext = createContext<EzoicContextValue | null>(null);
 /** Props for {@link EzoicProvider}. */
 export interface EzoicProviderProps extends EnsureEzoicScriptsOptions {
   children?: ReactNode;
+  /**
+   * Whether to mark the page as a single-page application at boot by pushing
+   * `ezstandalone.setIsSinglePageApplication(true)`. Defaults to `true`, which
+   * is correct for React apps that navigate client-side: after a route change,
+   * `showAds` routes to the bundle's `refresh()` (new-pageview reload). Set to
+   * `false` only for a provider that renders on a single, never-navigated page.
+   */
+  singlePageApp?: boolean;
 }
 
 /**
@@ -77,13 +92,20 @@ export function EzoicProvider({
   saScriptUrl,
   cmpScriptUrls,
   analyticsUrl,
+  singlePageApp = true,
 }: EzoicProviderProps): ReactNode {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     ensureEzoicScripts({ saScriptUrl, cmpScriptUrls, analyticsUrl });
+    // Enable SPA mode before the first ad request so client-side navigations
+    // reload ads as new pageviews. `setIsSinglePageApplication` is idempotent,
+    // so re-running this effect (e.g. if a script URL prop changes) is safe.
+    if (singlePageApp) {
+      setIsSinglePageApplication(true);
+    }
     setIsReady(true);
-  }, [saScriptUrl, cmpScriptUrls, analyticsUrl]);
+  }, [saScriptUrl, cmpScriptUrls, analyticsUrl, singlePageApp]);
 
   const value = useMemo<EzoicContextValue>(
     () => ({
@@ -95,6 +117,7 @@ export function EzoicProvider({
       destroyAll,
       refreshAds,
       isEzoicUser,
+      setIsSinglePageApplication,
     }),
     [isReady],
   );
