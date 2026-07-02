@@ -1,5 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ensureEzoicScripts, pushToEzoicCmd, type EnsureEzoicScriptsOptions } from './scripts';
+import {
+  destroyAll,
+  destroyPlaceholders,
+  displayMore,
+  isEzoicUser,
+  refreshAds,
+  showAds,
+} from './adManager';
+import type { EzoicShowAdsArg } from './types';
 
 /** Value exposed by {@link useEzoic}. */
 export interface EzoicContextValue {
@@ -15,6 +24,26 @@ export interface EzoicContextValue {
    * bundle initializes. No-op on the server.
    */
   push: (command: () => void) => void;
+  /**
+   * Requests one or more display placeholders. Accepts bare ids, an array of
+   * ids, or the object form (`{ id, required, sizes }`). Queued until the bundle
+   * loads. `<EzoicAd>` calls this for you; use it directly for imperative flows.
+   */
+  showAds: (...placeholders: EzoicShowAdsArg[]) => void;
+  /** Requests additional placeholders after the initial load (infinite scroll / dynamic content). */
+  displayMore: (...ids: number[]) => void;
+  /** Tears down the given placeholder ids. */
+  destroyPlaceholders: (...ids: number[]) => void;
+  /** Tears down every selected placeholder plus anchor, side rails, and floating outstream. */
+  destroyAll: () => void;
+  /** Re-requests bids for the given already-loaded placeholder ids. */
+  refreshAds: (...ids: number[]) => void;
+  /**
+   * Reports whether the visitor is in the Ezoic-enabled A/B cohort. Returns
+   * `undefined` until `sa.min.js` loads; pass a `callback` to be notified once
+   * the answer is known.
+   */
+  isEzoicUser: (percentage?: number, callback?: (isUser: boolean) => void) => boolean | undefined;
 }
 
 const EzoicContext = createContext<EzoicContextValue | null>(null);
@@ -56,7 +85,19 @@ export function EzoicProvider({
     setIsReady(true);
   }, [saScriptUrl, cmpScriptUrls, analyticsUrl]);
 
-  const value = useMemo<EzoicContextValue>(() => ({ isReady, push: pushToEzoicCmd }), [isReady]);
+  const value = useMemo<EzoicContextValue>(
+    () => ({
+      isReady,
+      push: pushToEzoicCmd,
+      showAds,
+      displayMore,
+      destroyPlaceholders,
+      destroyAll,
+      refreshAds,
+      isEzoicUser,
+    }),
+    [isReady],
+  );
 
   return <EzoicContext.Provider value={value}>{children}</EzoicContext.Provider>;
 }

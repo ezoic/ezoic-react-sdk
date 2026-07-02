@@ -56,6 +56,22 @@ describe('useEzoic', () => {
     spy.mockRestore();
   });
 
+  it('exposes the standalone passthroughs as functions', () => {
+    const { result } = renderHook(() => useEzoic(), {
+      wrapper: ({ children }) => createElement(EzoicProvider, null, children),
+    });
+    for (const name of [
+      'showAds',
+      'displayMore',
+      'destroyPlaceholders',
+      'destroyAll',
+      'refreshAds',
+      'isEzoicUser',
+    ] as const) {
+      expect(typeof result.current[name]).toBe('function');
+    }
+  });
+
   it('reports isReady true once mounted and queues commands via push', () => {
     const { result } = renderHook(() => useEzoic(), {
       wrapper: ({ children }) => createElement(EzoicProvider, null, children),
