@@ -4,6 +4,8 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { EzoicProvider, useEzoic } from './EzoicProvider';
 import { EzoicAd } from './EzoicAd';
+import { EzoicVideo } from './EzoicVideo';
+import { EzoicVideoEmbed } from './EzoicVideoEmbed';
 import { useEzoicPageView } from './useEzoicPageView';
 import { useEzoicRewarded } from './useEzoicRewarded';
 import {
@@ -13,6 +15,8 @@ import {
   requestRewarded,
   rewardedContentLocker,
 } from './rewarded';
+import { defineVideo, destroyVideoPlaceholders, displayMoreVideo } from './video';
+import { ensureOpenVideoScript, pushOpenVideoPlayer } from './openVideo';
 
 // These tests run in the Node environment (no jsdom): there is no `window` or
 // `document`. They prove the provider renders on the server without touching
@@ -85,5 +89,27 @@ describe('server-side rendering', () => {
 
   it('rewarded promise wrappers reject on the server rather than touching window', async () => {
     await expect(requestRewarded()).rejects.toThrow(/only available in the browser/);
+  });
+
+  it('renders EzoicVideo to a bare div on the server without touching window', () => {
+    const html = renderToString(
+      createElement(EzoicProvider, null, createElement(EzoicVideo, { divId: 'my-video' })),
+    );
+    expect(html).toContain('id="my-video"');
+    expect(html).not.toContain('ezojs.com');
+  });
+
+  it('renders EzoicVideoEmbed to a bare div on the server without touching window', () => {
+    const html = renderToString(createElement(EzoicVideoEmbed, { videoId: 'abc', id: 'ov' }));
+    expect(html).toContain('id="ov"');
+    expect(html).not.toContain('open.video');
+  });
+
+  it('video passthroughs and Open Video helpers are safe no-ops on the server', () => {
+    expect(() => defineVideo('a')).not.toThrow();
+    expect(() => displayMoreVideo('a')).not.toThrow();
+    expect(() => destroyVideoPlaceholders('a')).not.toThrow();
+    expect(() => ensureOpenVideoScript()).not.toThrow();
+    expect(() => pushOpenVideoPlayer({ target: 'div', videoID: 'abc' })).not.toThrow();
   });
 });

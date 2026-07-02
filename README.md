@@ -400,6 +400,56 @@ SSR-safe: on the server the hook returns its initial state and the promise
 wrappers reject with a clear "browser only" error rather than touching `window`.
 If the rewarded loader is missing, calls queue and never throw.
 
+### Video
+
+The SDK supports two independent video paths.
+
+**Ezoic outstream/instream video** (`<EzoicVideo>`) runs on the same standalone
+bundle as display ads. It renders a publisher-chosen `<div id>` and loads it via
+a batched `displayMoreVideo`, which both registers the placeholder and requests
+its ad code. Every `<EzoicVideo>` that mounts in the same commit is coalesced
+into one `displayMoreVideo(...divIds)` call; the bundle appends to its video
+registry without clobbering, so same-tick mounts share one call and later mounts
+add ids safely. On unmount the slot is torn down with
+`destroyVideoPlaceholders(divId)`.
+
+```tsx
+import { EzoicProvider, EzoicVideo } from '@ezoic/react-sdk';
+
+function Article() {
+  return (
+    <EzoicProvider>
+      <EzoicVideo divId="my-video-slot" />
+      <EzoicVideo divId="sidebar-video" style={{ minHeight: 240 }} />
+    </EzoicProvider>
+  );
+}
+```
+
+**Open Video** (`<EzoicVideoEmbed>`) embeds a player from Ezoic's video platform
+at [open.video](https://open.video), independent of `sa.min.js` (no
+`<EzoicProvider>` required). It injects `https://open.video/video.js` once and
+pushes a player entry onto `window.openVideoPlayers` targeting its own container
+div. Mount-once semantics: `videoId`, `float`, and `scriptUrl` are read on mount
+— to play a different video, remount with a new React `key`.
+
+```tsx
+import { EzoicVideoEmbed } from '@ezoic/react-sdk';
+
+function VideoBlock() {
+  return <EzoicVideoEmbed videoId="YOUR_VIDEO_ID" float />;
+}
+```
+
+Unlike display placeholders, **video containers may be styled**: both
+`<EzoicVideo>` and `<EzoicVideoEmbed>` accept `className`/`style` on their
+publisher-chosen container div. (Display placeholder divs — `<EzoicAd>` — must
+never be styled; Ezoic manages their dimensions.)
+
+Both paths are SSR-safe: the container div renders on the server, and every
+imperative call (`defineVideo`, `displayMoreVideo`, `destroyVideoPlaceholders`,
+`ensureOpenVideoScript`, `pushOpenVideoPlayer`) is a no-op there.
+
 ### Placeholder helpers
 
 Most apps should use `<EzoicAd>` above. These low-level helpers are exported for
@@ -422,57 +472,65 @@ function AdSlot({ id }: { id: number }) {
 
 ## API
 
-| Export                                    | Description                                                                                                                                                                                                                      |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<EzoicProvider singlePageApp?>`          | Injects the consent + `sa.min.js` scripts, marks SPA mode at boot (default on), and provides SDK context.                                                                                                                        |
-| `<EzoicAd id\|location required? sizes?>` | Renders a bare display placeholder div and requests it via batched `showAds`. Pass a numeric `id` (1–999) or a semantic `location` name (zero-config, resolved to a 900-range id).                                               |
-| `useEzoic()`                              | Hook returning `{ isReady, push, showAds, displayMore, destroyPlaceholders, destroyAll, refreshAds, isEzoicUser, setIsSinglePageApplication }`. Must be used inside `<EzoicProvider>`.                                           |
-| `useEzoicPageView(pageKey, { ids? })`     | On `pageKey` change, destroys the departing route's ids then `showAds` the new ids (or `destroyAll()` + `showAds()` when `ids` is omitted). Fires nothing on first render.                                                       |
-| `showAds(...placeholders)`                | Batched request for ids or `{ id, required?, sizes? }` objects; queues on `cmd`.                                                                                                                                                 |
-| `displayMore(...ids)`                     | Reveals additional placeholders (dynamic content); queues on `cmd`.                                                                                                                                                              |
-| `destroyPlaceholders(...ids)`             | Tears down the given placeholders; queues on `cmd`.                                                                                                                                                                              |
-| `destroyAll()`                            | Tears down every placeholder; queues on `cmd`.                                                                                                                                                                                   |
-| `refreshAds(...ids)`                      | Refreshes the given (or all) placeholders; queues on `cmd`.                                                                                                                                                                      |
-| `isEzoicUser(pct?, cb?)`                  | `boolean \| undefined` (undefined until loaded); pass a callback to resolve async.                                                                                                                                               |
-| `setIsSinglePageApplication(bool)`        | Marks the page as a single-page app; queues on `cmd`. Called at boot by the provider.                                                                                                                                            |
-| `useEzoicConsent()`                       | Hook returning live IAB TCF v2.2 consent state `{ cmpPresent, tcfReady, tcString, gdprApplies, eventStatus, cmpStatus }` via `window.__tcfapi`. SSR-safe; never throws without a CMP.                                            |
-| `enableConsent()`                         | Signals that Ezoic manages consent for this visitor; queues on `cmd`.                                                                                                                                                            |
-| `setDisablePersonalizedStatistics(bool)`  | Disables/enables personalized statistics; queues on `cmd`.                                                                                                                                                                       |
-| `setDisablePersonalizedAds(bool)`         | Disables/enables personalized ads; queues on `cmd`.                                                                                                                                                                              |
-| `config(options)`                         | Write-only publisher config. Only accepted keys are forwarded (unknown keys dropped with a warning). Call before the first `showAds`.                                                                                            |
-| `CONFIG_KEYS`                             | Read-only tuple of the accepted `config` keys.                                                                                                                                                                                   |
-| `setEzoicAnchorAd(bool)`                  | Enables/disables the anchor ad; queues on `cmd`.                                                                                                                                                                                 |
-| `hasAnchorAdBeenClosed()`                 | `boolean \| undefined` — whether the visitor closed the anchor ad (undefined until loaded).                                                                                                                                      |
-| `setInterstitialAllowed(bool, opts?)`     | Allows/disallows the interstitial format; queues on `cmd`.                                                                                                                                                                       |
-| `isInterstitialAllowed()`                 | `boolean \| undefined` — whether the interstitial is allowed (undefined until loaded).                                                                                                                                           |
-| `setOutstreamAllowed(bool, opts?)`        | Allows/disallows floating outstream. Returns `Promise<boolean \| undefined>` (resolves the bundle result, or `undefined` if queued before load).                                                                                 |
-| `isOutstreamAllowed()`                    | `boolean \| undefined` — whether floating outstream is allowed (undefined until loaded).                                                                                                                                         |
-| `useEzoicRewarded({ loaderUrl? })`        | Hook for rewarded ads. Injects the site-specific loader and returns `{ ready, initiated, displayed, closed, lastEvent, register, request, show, requestAndShow, requestWithOverlay, contentLocker, initRewardedAds }`. SSR-safe. |
-| `requestRewarded(config?)`                | Promise wrapper for `ezRewardedAds.request` → `{ status, msg, adInfo? }`.                                                                                                                                                        |
-| `showRewarded(config?)`                   | Promise wrapper for `ezRewardedAds.show` → `{ status, reward, msg, adInfo?, userInfo? }`.                                                                                                                                        |
-| `requestAndShowRewarded(config?)`         | Promise wrapper for `ezRewardedAds.requestAndShow` (no call-to-action modal) → show outcome.                                                                                                                                     |
-| `requestRewardedWithOverlay(text?, cfg?)` | Promise wrapper for `ezRewardedAds.requestWithOverlay` (recommended CTA flow) → show outcome.                                                                                                                                    |
-| `rewardedContentLocker(action, config?)`  | Gates `action` (URL or function) behind watching a rewarded ad; queues on the rewarded `cmd`.                                                                                                                                    |
-| `registerRewarded()`                      | Records that a rewarded implementation is present (tracking only); queues on the rewarded `cmd`.                                                                                                                                 |
-| `initRewardedAds(placements?)`            | Configures site-wide rewarded formats and triggers the slot via `ezstandalone.initRewardedAds`. Every format defaults to enabled; only an explicit `false` disables one.                                                         |
-| `ensureRewardedScript(loaderUrl)`         | Imperative, idempotent injection of the rewarded loader + `cmd` stub (advanced / non-React).                                                                                                                                     |
-| `pushToRewardedCmd(fn)`                   | Queues a command on `window.ezRewardedAds.cmd`; no-op on the server.                                                                                                                                                             |
-| `REWARDED_EVENTS`                         | Read-only map of the rewarded window event names (`ezRewardedInitiated`, etc.).                                                                                                                                                  |
-| `ensureEzoicScripts(opts)`                | Imperative, order-safe, idempotent script injection (advanced / non-React).                                                                                                                                                      |
-| `pushToEzoicCmd(fn)`                      | Queues a command on `window.ezstandalone.cmd`; no-op on the server.                                                                                                                                                              |
-| `CMP_SCRIPT_URL_1/2`                      | The Gatekeeper consent (CMP) script URLs.                                                                                                                                                                                        |
-| `SA_SCRIPT_URL`                           | The `sa.min.js` standalone bundle URL.                                                                                                                                                                                           |
-| `placeholderDomId(id)`                    | Builds `ezoic-pub-ad-placeholder-<id>`. Throws `RangeError` on an invalid id.                                                                                                                                                    |
-| `isValidPlaceholderId(id)`                | Type guard for a scannable display placeholder id (integer 1–999).                                                                                                                                                               |
-| `resolveGeneratedId(location)`            | Resolves a location name to a 900-range id via `GetGeneratedIdAsync`, falling back to the static map. Returns a promise.                                                                                                         |
-| `resolveLocationIdFromMap(location)`      | Pure static resolver: location name → 900-range id from `ID_TO_LOCATION` (no bundle needed).                                                                                                                                     |
-| `isKnownLocation(name)`                   | Type guard for a documented location name or alias.                                                                                                                                                                              |
-| `ID_TO_LOCATION`                          | The documented 900–999 id→location map (read-only).                                                                                                                                                                              |
-| `LOCATION_ALIASES`                        | Read-only map of location-name aliases to their canonical names.                                                                                                                                                                 |
-| `EZOIC_PLACEHOLDER_PREFIX`                | The `ezoic-pub-ad-placeholder-` DOM id prefix.                                                                                                                                                                                   |
-| `MIN_PLACEHOLDER_ID`                      | `1` — lowest scannable placeholder id.                                                                                                                                                                                           |
-| `MAX_PLACEHOLDER_ID`                      | `999` — highest scannable placeholder id.                                                                                                                                                                                        |
-| `VERSION`                                 | The installed SDK version string.                                                                                                                                                                                                |
+| Export                                                              | Description                                                                                                                                                                                                                            |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<EzoicProvider singlePageApp?>`                                    | Injects the consent + `sa.min.js` scripts, marks SPA mode at boot (default on), and provides SDK context.                                                                                                                              |
+| `<EzoicAd id\|location required? sizes?>`                           | Renders a bare display placeholder div and requests it via batched `showAds`. Pass a numeric `id` (1–999) or a semantic `location` name (zero-config, resolved to a 900-range id).                                                     |
+| `useEzoic()`                                                        | Hook returning `{ isReady, push, showAds, displayMore, destroyPlaceholders, destroyAll, refreshAds, isEzoicUser, setIsSinglePageApplication }`. Must be used inside `<EzoicProvider>`.                                                 |
+| `useEzoicPageView(pageKey, { ids? })`                               | On `pageKey` change, destroys the departing route's ids then `showAds` the new ids (or `destroyAll()` + `showAds()` when `ids` is omitted). Fires nothing on first render.                                                             |
+| `showAds(...placeholders)`                                          | Batched request for ids or `{ id, required?, sizes? }` objects; queues on `cmd`.                                                                                                                                                       |
+| `displayMore(...ids)`                                               | Reveals additional placeholders (dynamic content); queues on `cmd`.                                                                                                                                                                    |
+| `destroyPlaceholders(...ids)`                                       | Tears down the given placeholders; queues on `cmd`.                                                                                                                                                                                    |
+| `destroyAll()`                                                      | Tears down every placeholder; queues on `cmd`.                                                                                                                                                                                         |
+| `refreshAds(...ids)`                                                | Refreshes the given (or all) placeholders; queues on `cmd`.                                                                                                                                                                            |
+| `isEzoicUser(pct?, cb?)`                                            | `boolean \| undefined` (undefined until loaded); pass a callback to resolve async.                                                                                                                                                     |
+| `setIsSinglePageApplication(bool)`                                  | Marks the page as a single-page app; queues on `cmd`. Called at boot by the provider.                                                                                                                                                  |
+| `useEzoicConsent()`                                                 | Hook returning live IAB TCF v2.2 consent state `{ cmpPresent, tcfReady, tcString, gdprApplies, eventStatus, cmpStatus }` via `window.__tcfapi`. SSR-safe; never throws without a CMP.                                                  |
+| `enableConsent()`                                                   | Signals that Ezoic manages consent for this visitor; queues on `cmd`.                                                                                                                                                                  |
+| `setDisablePersonalizedStatistics(bool)`                            | Disables/enables personalized statistics; queues on `cmd`.                                                                                                                                                                             |
+| `setDisablePersonalizedAds(bool)`                                   | Disables/enables personalized ads; queues on `cmd`.                                                                                                                                                                                    |
+| `config(options)`                                                   | Write-only publisher config. Only accepted keys are forwarded (unknown keys dropped with a warning). Call before the first `showAds`.                                                                                                  |
+| `CONFIG_KEYS`                                                       | Read-only tuple of the accepted `config` keys.                                                                                                                                                                                         |
+| `setEzoicAnchorAd(bool)`                                            | Enables/disables the anchor ad; queues on `cmd`.                                                                                                                                                                                       |
+| `hasAnchorAdBeenClosed()`                                           | `boolean \| undefined` — whether the visitor closed the anchor ad (undefined until loaded).                                                                                                                                            |
+| `setInterstitialAllowed(bool, opts?)`                               | Allows/disallows the interstitial format; queues on `cmd`.                                                                                                                                                                             |
+| `isInterstitialAllowed()`                                           | `boolean \| undefined` — whether the interstitial is allowed (undefined until loaded).                                                                                                                                                 |
+| `setOutstreamAllowed(bool, opts?)`                                  | Allows/disallows floating outstream. Returns `Promise<boolean \| undefined>` (resolves the bundle result, or `undefined` if queued before load).                                                                                       |
+| `isOutstreamAllowed()`                                              | `boolean \| undefined` — whether floating outstream is allowed (undefined until loaded).                                                                                                                                               |
+| `useEzoicRewarded({ loaderUrl? })`                                  | Hook for rewarded ads. Injects the site-specific loader and returns `{ ready, initiated, displayed, closed, lastEvent, register, request, show, requestAndShow, requestWithOverlay, contentLocker, initRewardedAds }`. SSR-safe.       |
+| `requestRewarded(config?)`                                          | Promise wrapper for `ezRewardedAds.request` → `{ status, msg, adInfo? }`.                                                                                                                                                              |
+| `showRewarded(config?)`                                             | Promise wrapper for `ezRewardedAds.show` → `{ status, reward, msg, adInfo?, userInfo? }`.                                                                                                                                              |
+| `requestAndShowRewarded(config?)`                                   | Promise wrapper for `ezRewardedAds.requestAndShow` (no call-to-action modal) → show outcome.                                                                                                                                           |
+| `requestRewardedWithOverlay(text?, cfg?)`                           | Promise wrapper for `ezRewardedAds.requestWithOverlay` (recommended CTA flow) → show outcome.                                                                                                                                          |
+| `rewardedContentLocker(action, config?)`                            | Gates `action` (URL or function) behind watching a rewarded ad; queues on the rewarded `cmd`.                                                                                                                                          |
+| `registerRewarded()`                                                | Records that a rewarded implementation is present (tracking only); queues on the rewarded `cmd`.                                                                                                                                       |
+| `initRewardedAds(placements?)`                                      | Configures site-wide rewarded formats and triggers the slot via `ezstandalone.initRewardedAds`. Every format defaults to enabled; only an explicit `false` disables one.                                                               |
+| `<EzoicVideo divId className? style?>`                              | Renders a publisher-chosen video container div and loads it via batched `displayMoreVideo`. Destroys it on unmount. May be styled. Requires `<EzoicProvider>`.                                                                         |
+| `<EzoicVideoEmbed videoId float? scriptUrl? id? className? style?>` | Embeds an Open Video (open.video) player: injects `open.video/video.js` once and pushes to `window.openVideoPlayers`. Independent of `sa.min.js` — no provider required. May be styled. Mount-once (change `videoId` via a new `key`). |
+| `defineVideo(...entries)`                                           | Registers video placeholders (register-only; resets the registry, then appends the passed entries — does not request ad code); queues on `cmd`.                                                                                        |
+| `displayMoreVideo(...divIds)`                                       | Registers (if new) and loads video ad code for the given divs; appends without clobbering; queues on `cmd`.                                                                                                                            |
+| `destroyVideoPlaceholders(...divIds)`                               | Tears down the given video divs and their players; queues on `cmd`.                                                                                                                                                                    |
+| `ensureOpenVideoScript(scriptUrl?)`                                 | Imperative, idempotent injection of the Open Video script; guard-seeds `window.openVideoPlayers` (never resets it). No-op on the server.                                                                                               |
+| `pushOpenVideoPlayer(entry)`                                        | Pushes an `{ target, videoID?, playlist?, float? }` entry onto `window.openVideoPlayers` (guard-only init, never reset). No-op on the server.                                                                                          |
+| `OPEN_VIDEO_SCRIPT_URL`                                             | The Open Video (`open.video/video.js`) script URL.                                                                                                                                                                                     |
+| `ensureRewardedScript(loaderUrl)`                                   | Imperative, idempotent injection of the rewarded loader + `cmd` stub (advanced / non-React).                                                                                                                                           |
+| `pushToRewardedCmd(fn)`                                             | Queues a command on `window.ezRewardedAds.cmd`; no-op on the server.                                                                                                                                                                   |
+| `REWARDED_EVENTS`                                                   | Read-only map of the rewarded window event names (`ezRewardedInitiated`, etc.).                                                                                                                                                        |
+| `ensureEzoicScripts(opts)`                                          | Imperative, order-safe, idempotent script injection (advanced / non-React).                                                                                                                                                            |
+| `pushToEzoicCmd(fn)`                                                | Queues a command on `window.ezstandalone.cmd`; no-op on the server.                                                                                                                                                                    |
+| `CMP_SCRIPT_URL_1/2`                                                | The Gatekeeper consent (CMP) script URLs.                                                                                                                                                                                              |
+| `SA_SCRIPT_URL`                                                     | The `sa.min.js` standalone bundle URL.                                                                                                                                                                                                 |
+| `placeholderDomId(id)`                                              | Builds `ezoic-pub-ad-placeholder-<id>`. Throws `RangeError` on an invalid id.                                                                                                                                                          |
+| `isValidPlaceholderId(id)`                                          | Type guard for a scannable display placeholder id (integer 1–999).                                                                                                                                                                     |
+| `resolveGeneratedId(location)`                                      | Resolves a location name to a 900-range id via `GetGeneratedIdAsync`, falling back to the static map. Returns a promise.                                                                                                               |
+| `resolveLocationIdFromMap(location)`                                | Pure static resolver: location name → 900-range id from `ID_TO_LOCATION` (no bundle needed).                                                                                                                                           |
+| `isKnownLocation(name)`                                             | Type guard for a documented location name or alias.                                                                                                                                                                                    |
+| `ID_TO_LOCATION`                                                    | The documented 900–999 id→location map (read-only).                                                                                                                                                                                    |
+| `LOCATION_ALIASES`                                                  | Read-only map of location-name aliases to their canonical names.                                                                                                                                                                       |
+| `EZOIC_PLACEHOLDER_PREFIX`                                          | The `ezoic-pub-ad-placeholder-` DOM id prefix.                                                                                                                                                                                         |
+| `MIN_PLACEHOLDER_ID`                                                | `1` — lowest scannable placeholder id.                                                                                                                                                                                                 |
+| `MAX_PLACEHOLDER_ID`                                                | `999` — highest scannable placeholder id.                                                                                                                                                                                              |
+| `VERSION`                                                           | The installed SDK version string.                                                                                                                                                                                                      |
 
 ## Roadmap
 
@@ -483,7 +541,7 @@ function AdSlot({ id }: { id: number }) {
 - [x] Zero-config location placements (`<EzoicAd location="…" />`)
 - [x] Consent + config passthroughs (`useEzoicConsent`, `config`, format toggles)
 - [x] Rewarded ads (`useEzoicRewarded`)
-- [ ] Video (Ezoic + Open Video)
+- [x] Video (Ezoic + Open Video)
 - [ ] Docs site + example app
 
 ## Development

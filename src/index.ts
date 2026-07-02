@@ -66,6 +66,12 @@ export type {
   EzoicRewardedApi,
   UseEzoicRewardedOptions,
 } from './useEzoicRewarded';
+export { defineVideo, displayMoreVideo, destroyVideoPlaceholders } from './video';
+export { EzoicVideo } from './EzoicVideo';
+export type { EzoicVideoProps } from './EzoicVideo';
+export { OPEN_VIDEO_SCRIPT_URL, ensureOpenVideoScript, pushOpenVideoPlayer } from './openVideo';
+export { EzoicVideoEmbed } from './EzoicVideoEmbed';
+export type { EzoicVideoEmbedProps } from './EzoicVideoEmbed';
 export {
   CMP_SCRIPT_URL_1,
   CMP_SCRIPT_URL_2,
@@ -94,5 +100,7 @@ export type {
   EzoicContentLockerCallToAction,
   EzoicRewardedRequestOutcome,
   EzoicRewardedShowOutcome,
+  EzoicVideoDefineEntry,
+  OpenVideoPlayerEntry,
 } from './types';
 export { VERSION } from './version';

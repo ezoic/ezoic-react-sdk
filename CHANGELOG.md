@@ -87,5 +87,27 @@ undefined` (undefined until `sa.min.js` loads). Added `EzoicConfig`, `TcfData`,
   `pushToRewardedCmd`, `REWARDED_EVENTS`, and the `EzRewardedAdsApi` /
   `EzoicRewarded*` / `EzoicContentLocker*` type contracts. `initRewardedAds` added
   to the `EzstandaloneApi` contract and `ezRewardedAds` to `EzoicWindow`.
+- Video (Ezoic path): `<EzoicVideo divId className? style?>` renders a
+  publisher-chosen video container div and loads it via a batched
+  `displayMoreVideo`, which both registers the placeholder and requests its ad
+  code. Same-tick mounts coalesce into one `displayMoreVideo(...divIds)` call;
+  the bundle appends to its video registry without clobbering, so later mounts
+  add ids safely. The slot is torn down with `destroyVideoPlaceholders(divId)`
+  on unmount. Unlike `<EzoicAd>`, the video container may be styled. Standalone
+  passthroughs `defineVideo`, `displayMoreVideo`, `destroyVideoPlaceholders`
+  (queued on `ezstandalone.cmd`) and the `EzoicVideoDefineEntry` type;
+  `defineVideo` / `displayMoreVideo` / `destroyVideoPlaceholders` added to the
+  `EzstandaloneApi` contract.
+- Video (Open Video path): `<EzoicVideoEmbed videoId float? scriptUrl? id?
+className? style?>` embeds an open.video player independent of `sa.min.js` (no
+  provider required). It injects `https://open.video/video.js` once (idempotent
+  by marker and by path) and pushes an `{ target, videoID, float }` entry onto
+  `window.openVideoPlayers`. The global is only ever guard-initialized
+  (`window.openVideoPlayers = window.openVideoPlayers || []`) and NEVER reset, so
+  the live handler open.video installs after load is preserved. Mount-once
+  semantics (change `videoId` via a new React `key`); the container may be styled.
+  Standalone helpers `ensureOpenVideoScript`, `pushOpenVideoPlayer`, the
+  `OPEN_VIDEO_SCRIPT_URL` constant, and the `OpenVideoPlayerEntry` /
+  `OpenVideoPlayersQueue` types; `openVideoPlayers` added to `EzoicWindow`.
 
 [Unreleased]: https://github.com/ezoic/ezoic-react-sdk/commits/master

@@ -36,6 +36,44 @@ export interface EzoicShowAdsPlaceholder {
 export type EzoicShowAdsArg = number | number[] | EzoicShowAdsPlaceholder;
 
 /**
+ * A single entry passed to `ezstandalone.defineVideo`: either a bare publisher
+ * div id, or the object form `{ divID }`. These are publisher-chosen div ids,
+ * distinct from the numeric display placeholder ids used by `showAds`.
+ */
+export type EzoicVideoDefineEntry = string | { divID: string };
+
+/**
+ * A player entry pushed onto `window.openVideoPlayers` to embed an Open Video
+ * (open.video) player. `videoID` is the primary content key; `playlist` is an
+ * alternative. `target` is the container element (or a selector string) the
+ * player renders into, and `float` opts the player into floating behavior.
+ *
+ * There is no `autoplay` or `loop` option — the platform does not accept them.
+ */
+export interface OpenVideoPlayerEntry {
+  /** Container the player renders into — an Element or a CSS selector string. */
+  target: Element | string;
+  /** Primary content key. Required in practice; optional at the type level because {@link OpenVideoPlayerEntry.playlist} is an alternative. */
+  videoID?: string;
+  /** Alternative to `videoID`: a playlist identifier. */
+  playlist?: string;
+  /** Opt the player into floating behavior. */
+  float?: boolean;
+}
+
+/**
+ * The live handler `open.video/video.js` installs in place of the seeded
+ * `window.openVideoPlayers` array once it loads: a `push`-compatible object that
+ * drains queued entries. `visited` and `players` are internal bookkeeping the
+ * handler maintains. The SDK only relies on `push`.
+ */
+export interface OpenVideoPlayersQueue {
+  push(entry: OpenVideoPlayerEntry): void;
+  visited?: boolean;
+  players?: unknown[];
+}
+
+/**
  * Publisher configuration accepted by `ezstandalone.config`. Only these keys are
  * honored; the bundle logs an error and ignores anything else, so the SDK types
  * the exact verified set. Every field is optional — pass only what you set.
@@ -163,6 +201,21 @@ export interface EzstandaloneApi {
    * Present once `sa.min.js` initializes.
    */
   initRewardedAds?(placements?: EzoicRewardedPlacements): void;
+  /**
+   * Registers one or more Ezoic video placeholders by publisher div id
+   * (register-only — does NOT request ad code).
+   *
+   * Note: the bundle RESETS the entire video placeholder registry on each call
+   * — it clears, then appends only the entries passed (see
+   * {@link EzoicVideoDefineEntry}). Defined slots load when the page-level
+   * `showAds`/`display` runs; to register and load in one call use
+   * {@link EzstandaloneApi.displayMoreVideo}.
+   */
+  defineVideo?(...entries: EzoicVideoDefineEntry[]): void;
+  /** Registers (if new) AND loads the video ad code for the given video placeholder div ids; appends without clobbering. */
+  displayMoreVideo?(...divIds: string[]): void;
+  /** Clears the given video divs and tears down their players. */
+  destroyVideoPlaceholders?(...divIds: string[]): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -349,4 +402,14 @@ export interface EzoicWindow {
    * rewarded passthroughs drive it through its own `cmd` queue.
    */
   ezRewardedAds?: EzRewardedAdsApi;
+  /**
+   * The Open Video (open.video) player queue. Before `video.js` loads it is a
+   * plain array of {@link OpenVideoPlayerEntry}; after load the platform
+   * REPLACES it with a live {@link OpenVideoPlayersQueue} handler that drains
+   * pushes. It must only ever be guard-initialized
+   * (`window.openVideoPlayers = window.openVideoPlayers || []`) and NEVER reset
+   * or reassigned to a fresh array — doing so clobbers the live handler and
+   * every subsequent push is lost.
+   */
+  openVideoPlayers?: OpenVideoPlayerEntry[] | OpenVideoPlayersQueue;
 }
