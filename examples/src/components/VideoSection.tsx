@@ -18,7 +18,8 @@ export function VideoSection(): ReactElement {
         <p className="section-desc">
           Provider-driven video placeholder. Its container div may carry layout styles.
         </p>
-        <EzoicVideo divId="ezoic-video-demo" style={videoStyle} />
+        {/* Must be a numeric string — ezstandalone.displayMoreVideo silently drops non-numeric divIds. */}
+        <EzoicVideo divId="900001" style={videoStyle} />
       </div>
       <div className="video-block">
         <h3 className="video-title">EzoicVideoEmbed — Open Video</h3>

@@ -449,8 +449,8 @@ import { EzoicProvider, EzoicVideo } from '@ezoic/react-sdk';
 function Article() {
   return (
     <EzoicProvider>
-      <EzoicVideo divId="my-video-slot" />
-      <EzoicVideo divId="sidebar-video" style={{ minHeight: 240 }} />
+      <EzoicVideo divId="900001" />
+      <EzoicVideo divId="900002" style={{ minHeight: 240 }} />
     </EzoicProvider>
   );
 }

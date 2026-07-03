@@ -4,7 +4,7 @@ import { useEzoic } from './EzoicProvider';
 
 /** Props for {@link EzoicVideo}. */
 export interface EzoicVideoProps {
-  /** Publisher-chosen video container div id (e.g. `"my-video-slot"`). */
+  /** Publisher-chosen video container div id. Must be a numeric string (e.g. `"900001"`) — the underlying bundle silently drops non-numeric ids. */
   divId: string;
   /** Optional class name applied to the container div. */
   className?: string;
@@ -30,11 +30,15 @@ export interface EzoicVideoProps {
  * changing `divId` tears down the old placeholder and loads the new one. To
  * reset other semantics, remount with a new React `key`.
  *
+ * The underlying `ezstandalone.displayMoreVideo` bundle call filters its
+ * arguments with `isNaN`, so a non-numeric `divId` (e.g. `"my-video-slot"`) is
+ * silently dropped and never loads — use a numeric-string id.
+ *
  * @example
  * ```tsx
  * <EzoicProvider>
- *   <EzoicVideo divId="my-video-slot" />
- *   <EzoicVideo divId="sidebar-video" style={{ minHeight: 240 }} />
+ *   <EzoicVideo divId="900001" />
+ *   <EzoicVideo divId="900002" style={{ minHeight: 240 }} />
  * </EzoicProvider>
  * ```
  */
