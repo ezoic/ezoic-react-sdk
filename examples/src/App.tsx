@@ -24,9 +24,9 @@ export function App(): ReactElement {
           <header className="app-header">
             <h1>Ezoic React SDK Demo</h1>
             <p className="app-subtitle">
-              Exercises every feature of <code>@ezoic/react-sdk</code> v{VERSION}. On localhost the
-              Ezoic scripts are absent, so SDK calls queue as no-ops and no ads render — every
-              button still logs to the panel on the right.
+              Exercises every feature of <code>@ezoic/react-sdk</code> v{VERSION}. The SDK injects
+              the CMP and ad scripts at runtime; where Ezoic demand is available the zero-config
+              placements below fill. Every control logs to the panel on the right.
             </p>
           </header>
           <main className="app-main">

@@ -116,4 +116,12 @@ className? style?>` embeds an open.video player independent of `sa.min.js` (no
   hand-written Ezoic snippets to the SDK.
 - GitHub issue templates (bug report, feature request) and template config.
 
+### Changed
+
+- The `examples/` demo app now builds to a single self-contained HTML file (all
+  JS and CSS inlined via `vite-plugin-singlefile`), so the built demo can be
+  hosted as one static page with no external asset requests beyond the Ezoic and
+  CMP scripts the SDK injects at runtime. The demo subtitle no longer assumes a
+  localhost context.
+
 [Unreleased]: https://github.com/ezoic/ezoic-react-sdk/commits/master
