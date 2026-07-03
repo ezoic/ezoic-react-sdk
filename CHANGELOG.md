@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `<EzoicVideo>` / `defineVideo` / `displayMoreVideo`: documented that `divId`
+  must be a numeric string — the underlying `ezstandalone` bundle filters
+  arguments with `isNaN`, so a non-numeric `divId` is silently dropped and the
+  video placeholder never loads. Updated the README example and the demo app's
+  `VideoSection` to use a numeric `divId`.
+
 ## [1.0.0] - 2026-07-03
 
 ### Added
