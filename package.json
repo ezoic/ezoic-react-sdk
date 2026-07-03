@@ -1,6 +1,6 @@
 {
   "name": "@ezoic/react-sdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Official Ezoic SDK for React — script management, display ads, SPA routing, rewarded ads, and video for Ezoic Ads.",
   "license": "MIT",
   "author": "Ezoic",

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-03
+
 ### Added
 
 - Package skeleton: TypeScript, dual ESM/CJS build via tsup with type
@@ -124,4 +126,5 @@ className? style?>` embeds an open.video player independent of `sa.min.js` (no
   CMP scripts the SDK injects at runtime. The demo subtitle no longer assumes a
   localhost context.
 
-[Unreleased]: https://github.com/ezoic/ezoic-react-sdk/commits/master
+[Unreleased]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ezoic/ezoic-react-sdk/releases/tag/v1.0.0
