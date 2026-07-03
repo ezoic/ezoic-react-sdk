@@ -109,5 +109,11 @@ className? style?>` embeds an open.video player independent of `sa.min.js` (no
   Standalone helpers `ensureOpenVideoScript`, `pushOpenVideoPlayer`, the
   `OPEN_VIDEO_SCRIPT_URL` constant, and the `OpenVideoPlayerEntry` /
   `OpenVideoPlayersQueue` types; `openVideoPlayers` added to `EzoicWindow`.
+- `examples/` Vite demo app exercising every SDK feature — provider setup,
+  display ads, zero-config locations, dynamic `showAds`, SPA routing, consent,
+  rewarded, and video — with an on-page event log.
+- README Quickstart and Examples sections, plus a guide for migrating from raw
+  hand-written Ezoic snippets to the SDK.
+- GitHub issue templates (bug report, feature request) and template config.
 
 [Unreleased]: https://github.com/ezoic/ezoic-react-sdk/commits/master

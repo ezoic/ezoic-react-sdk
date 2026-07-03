@@ -30,3 +30,18 @@ jobs:
       - run: npm run build
       - run: npm run lint:publish
       - run: npm pack --dry-run
+  build-example:
+    name: Example app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm ci
+        working-directory: examples
+      - run: npm run build
+        working-directory: examples

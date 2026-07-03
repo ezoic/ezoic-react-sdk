@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ezoic Ads documentation
+    url: https://docs.ezoic.com/docs/ezoicads/integration/
+    about: Integration guides and reference for Ezoic Ads.

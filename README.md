@@ -32,6 +32,28 @@ npm install @ezoic/react-sdk
 `react` and `react-dom` are peer dependencies and must already be installed in
 your app.
 
+## Quickstart
+
+Wrap your app once in `<EzoicProvider>`, drop an `<EzoicAd>` where you want an
+ad, done.
+
+```tsx
+import { EzoicProvider, EzoicAd } from '@ezoic/react-sdk';
+
+export default function App() {
+  return (
+    <EzoicProvider>
+      <h1>My site</h1>
+      {/* Recommended: pass sizes + required on every placement. */}
+      <EzoicAd id={101} sizes={['728x90', '300x250']} required />
+    </EzoicProvider>
+  );
+}
+```
+
+See [Usage](#usage) below for SPA routing, zero-config placements, consent,
+rewarded, and video.
+
 ## Usage
 
 ### Provider setup
@@ -478,6 +500,46 @@ function AdSlot({ id }: { id: number }) {
 }
 ```
 
+### Migrating from raw Ezoic snippets
+
+If you already integrated Ezoic by hand, replace the raw snippet with the SDK.
+
+Before — hand-written cmd-queue stub, a bare placeholder div, and a manual
+`showAds` call:
+
+```html
+<script>
+  window.ezstandalone = window.ezstandalone || {};
+  ezstandalone.cmd = ezstandalone.cmd || [];
+</script>
+
+<div id="ezoic-pub-ad-placeholder-101"></div>
+
+<script>
+  ezstandalone.cmd.push(function () {
+    ezstandalone.showAds(101);
+  });
+</script>
+```
+
+After — the SDK equivalent:
+
+```tsx
+import { EzoicProvider, EzoicAd } from '@ezoic/react-sdk';
+
+export default function App() {
+  return (
+    <EzoicProvider>
+      <EzoicAd id={101} sizes={['728x90']} required />
+    </EzoicProvider>
+  );
+}
+```
+
+The Provider owns the CMP + `ezstandalone.cmd` queue + `sa.min.js` injection, and
+each `<EzoicAd>` handles its own `showAds` on mount and `destroyPlaceholders` on
+unmount. No manual queue calls are needed.
+
 ## API
 
 | Export                                                              | Description                                                                                                                                                                                                                            |
@@ -551,6 +613,21 @@ function AdSlot({ id }: { id: number }) {
 - [x] Rewarded ads (`useEzoicRewarded`)
 - [x] Video (Ezoic + Open Video)
 - [ ] Docs site + example app
+
+## Examples
+
+The [`examples/`](./examples) Vite demo app exercises every feature. Run it with:
+
+```bash
+cd examples
+npm install
+npm run dev
+```
+
+It demonstrates provider setup, display ads, zero-config locations, dynamic
+`showAds`, SPA routing, consent, rewarded, and video, with an on-page event log.
+Ads will not fill on localhost (no demand) — the demo is for verifying wiring and
+structure.
 
 ## Development
 

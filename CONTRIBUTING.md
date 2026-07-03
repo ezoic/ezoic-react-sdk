@@ -38,6 +38,17 @@ npm test
 npm run build
 ```
 
+## Running the example app
+
+```sh
+cd examples
+npm install
+npm run dev
+```
+
+The example links the local package via `file:..`, so build the root package
+(`npm run build`) first if you changed SDK source.
+
 ## Guidelines
 
 - Use TypeScript. Public exports must be typed and documented with TSDoc.
