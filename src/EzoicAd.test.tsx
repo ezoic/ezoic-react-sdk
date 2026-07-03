@@ -209,29 +209,56 @@ describe('EzoicAd zero-config location', () => {
       createElement(
         EzoicProvider,
         null,
-        createElement(EzoicAd, { location: 'under_first_paragraph' }),
+        createElement(EzoicAd, {
+          location: 'under_first_paragraph',
+          sizes: ['728x90', '320x50'],
+        }),
       ),
     );
     await settleLocation();
     expect(getGeneratedId).toHaveBeenCalledWith('under_first_paragraph');
     expect(divCount(909)).toBe(1);
-    expect(showAds).toHaveBeenCalledWith(909);
+    expect(showAds).toHaveBeenCalledWith({
+      id: 909,
+      required: true,
+      sizes: ['728x90', '320x50'],
+    });
   });
 
   it('coerces a numeric-string id from the bundle', async () => {
     const { showAds } = installEzstandaloneWithLocations('915');
-    render(createElement(EzoicProvider, null, createElement(EzoicAd, { location: 'incontent_5' })));
+    render(
+      createElement(
+        EzoicProvider,
+        null,
+        createElement(EzoicAd, { location: 'incontent_5', sizes: ['728x90', '320x50'] }),
+      ),
+    );
     await settleLocation();
     expect(divCount(915)).toBe(1);
-    expect(showAds).toHaveBeenCalledWith(915);
+    expect(showAds).toHaveBeenCalledWith({
+      id: 915,
+      required: true,
+      sizes: ['728x90', '320x50'],
+    });
   });
 
   it('falls back to the static map when the bundle lacks GetGeneratedIdAsync', async () => {
     const { showAds } = installEzstandaloneWithLocations(); // no async API
-    render(createElement(EzoicProvider, null, createElement(EzoicAd, { location: 'mid_content' })));
+    render(
+      createElement(
+        EzoicProvider,
+        null,
+        createElement(EzoicAd, { location: 'mid_content', sizes: ['728x90', '320x50'] }),
+      ),
+    );
     await settleLocation();
     expect(divCount(911)).toBe(1);
-    expect(showAds).toHaveBeenCalledWith(911);
+    expect(showAds).toHaveBeenCalledWith({
+      id: 911,
+      required: true,
+      sizes: ['728x90', '320x50'],
+    });
   });
 
   it('errors and renders nothing for an unknown location', async () => {
@@ -270,12 +297,88 @@ describe('EzoicAd zero-config location', () => {
       createElement(
         EzoicProvider,
         null,
-        createElement(EzoicAd, { location: 'under_first_paragraph' }),
+        createElement(EzoicAd, {
+          location: 'under_first_paragraph',
+          sizes: ['728x90', '320x50'],
+        }),
       ),
     );
     await settleLocation();
     unmount();
     await flushMicrotasks();
     expect(destroyPlaceholders).toHaveBeenCalledWith(909);
+  });
+
+  it('location without sizes warns and still defaults required:true', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { showAds } = installEzstandaloneWithLocations(911);
+    render(createElement(EzoicProvider, null, createElement(EzoicAd, { location: 'mid_content' })));
+    await settleLocation();
+    expect(warn).toHaveBeenCalledOnce();
+    expect(showAds).toHaveBeenCalledWith({ id: 911, required: true, sizes: undefined });
+  });
+
+  it('location with only invalid sizes warns about the invalid size, not about missing sizes', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { showAds } = installEzstandaloneWithLocations(911);
+    render(
+      createElement(
+        EzoicProvider,
+        null,
+        createElement(EzoicAd, { location: 'mid_content', sizes: ['nope'] }),
+      ),
+    );
+    await settleLocation();
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0]![0]).toContain('Ignoring invalid ad size');
+    expect(warn.mock.calls[0]![0]).not.toContain('without');
+    expect(showAds).toHaveBeenCalledWith({ id: 911, required: true, sizes: undefined });
+  });
+
+  it('required={false} opts out of the forced required flag', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { showAds } = installEzstandaloneWithLocations(911);
+    render(
+      createElement(
+        EzoicProvider,
+        null,
+        createElement(EzoicAd, {
+          location: 'mid_content',
+          required: false,
+          sizes: ['300x250'],
+        }),
+      ),
+    );
+    await settleLocation();
+    expect(warn).not.toHaveBeenCalled();
+    expect(showAds).toHaveBeenCalledWith({ id: 911, required: false, sizes: ['300x250'] });
+  });
+
+  it('reads required live if it flips during async id resolution', async () => {
+    const { showAds } = installEzstandaloneWithLocations(911);
+    const { rerender } = render(
+      createElement(
+        EzoicProvider,
+        null,
+        createElement(EzoicAd, {
+          location: 'mid_content',
+          required: true,
+          sizes: ['300x250'],
+        }),
+      ),
+    );
+    rerender(
+      createElement(
+        EzoicProvider,
+        null,
+        createElement(EzoicAd, {
+          location: 'mid_content',
+          required: false,
+          sizes: ['300x250'],
+        }),
+      ),
+    );
+    await settleLocation();
+    expect(showAds).toHaveBeenCalledWith({ id: 911, required: false, sizes: ['300x250'] });
   });
 });

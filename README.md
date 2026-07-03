@@ -154,11 +154,11 @@ import { EzoicProvider, EzoicAd } from '@ezoic/react-sdk';
 export default function Article() {
   return (
     <EzoicProvider>
-      <EzoicAd location="top_of_page" />
+      <EzoicAd location="top_of_page" sizes={['728x90', '320x50']} />
       <p>…intro…</p>
-      <EzoicAd location="under_first_paragraph" />
+      <EzoicAd location="under_first_paragraph" sizes={['728x90', '320x50']} />
       <p>…more content…</p>
-      <EzoicAd location="mid_content" />
+      <EzoicAd location="mid_content" sizes={['300x250']} />
     </EzoicProvider>
   );
 }
@@ -178,8 +178,16 @@ Behavior:
   supported — `top_of_page`, `under_first_paragraph`, `under_second_paragraph`,
   `mid_content`, the `sidebar_*` family, `incontent_5`…`incontent_88`, and
   aliases like `incontent_1`. An unknown name logs an error and renders nothing.
-- **Either `id` or `location`.** Provide one, not both. `required` / `sizes`
-  work the same as for numeric placeholders.
+- **Either `id` or `location`.** Provide one, not both.
+- **`required` defaults to `true` for `location=`.** The ad server only treats a
+  placeholder as zero-config when its id is in the reserved range AND it is
+  flagged `required`, so a `location` placement is sent as `required: true`
+  unless you pass `required={false}` to opt out. Numeric `id` placements are
+  unaffected — `required` stays optional and defaults to unset.
+- **Always pass `sizes` for `location=`.** Zero-config placeholders have no
+  dashboard-configured sizing, so the SDK warns (and the ad will not fill) if
+  `sizes` is omitted. Numeric `id` placements are dashboard-configured, so
+  `sizes` is optional there.
 
 For custom containers you can resolve an id yourself with
 `resolveGeneratedId(location)` (returns a promise), or use the pure

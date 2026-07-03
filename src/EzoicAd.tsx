@@ -84,12 +84,17 @@ function normalizeSizes(sizes: string[] | undefined, id: number): string[] | und
  * when the slot is first shown, so changing them later does not re-request the
  * ad. To apply new config, remount with a new React `key`.
  *
+ * A `location=` placement defaults `required` to `true` (pass `required={false}`
+ * to opt out) and should always be given explicit `sizes`, since zero-config
+ * placeholders have no dashboard-configured sizing. A numeric `id` placement is
+ * dashboard-configured, so `sizes` is optional there.
+ *
  * @example
  * ```tsx
  * <EzoicProvider>
  *   <EzoicAd id={101} />
  *   <EzoicAd id={102} required sizes={['728x90', '970x250']} />
- *   <EzoicAd location="under_first_paragraph" />
+ *   <EzoicAd location="under_first_paragraph" sizes={['728x90', '320x50']} />
  * </EzoicProvider>
  * ```
  */
@@ -127,13 +132,27 @@ export function EzoicAd(props: EzoicAdProps): ReactElement | null {
   useEffect(() => {
     let cancelled = false;
 
-    const acquire = (effId: number): void => {
+    const acquire = (effId: number, isLocation: boolean): void => {
       if (cancelled) return;
       const { required: cfgRequired, sizes: cfgSizes } = configRef.current;
+      // Zero-config `location=` placeholders are only treated as zero-config by
+      // the ad server when required AND id >= 900, so default required to true
+      // here; numeric `id` placements are unaffected (undefined stays undefined).
+      const effectiveRequired = isLocation ? (cfgRequired ?? true) : cfgRequired;
+      const normalizedSizes = normalizeSizes(cfgSizes, effId);
+      const providedNoSizes = cfgSizes === undefined || cfgSizes.length === 0;
+      if (isLocation && providedNoSizes) {
+        console.warn(
+          `[ezoic/react-sdk] <EzoicAd location=${JSON.stringify(location)} /> was shown ` +
+            'without `sizes`. Zero-config location placements have no dashboard-configured ' +
+            "sizing, so they need explicit sizes (e.g. sizes={['728x90','320x50']}) to " +
+            'create ad placements.',
+        );
+      }
       const acquired = acquirePlaceholder({
         id: effId,
-        required: cfgRequired,
-        sizes: normalizeSizes(cfgSizes, effId),
+        required: effectiveRequired,
+        sizes: normalizedSizes,
       });
       ownsRef.current = acquired;
       acquiredIdRef.current = acquired ? effId : null;
@@ -167,7 +186,7 @@ export function EzoicAd(props: EzoicAdProps): ReactElement | null {
         );
         return;
       }
-      acquire(id);
+      acquire(id, false);
     } else {
       if (!isKnownLocation(location!)) {
         console.error(
@@ -177,7 +196,7 @@ export function EzoicAd(props: EzoicAdProps): ReactElement | null {
         return;
       }
       resolveGeneratedId(location!, isPlaceholderOwned)
-        .then((effId) => acquire(effId))
+        .then((effId) => acquire(effId, true))
         .catch((err: unknown) => {
           if (cancelled) return;
           console.error(
