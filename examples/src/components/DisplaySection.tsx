@@ -16,8 +16,8 @@ export function DisplaySection(): ReactElement {
       </p>
       <div className="ad-grid">
         <div className="ad-slot">
-          <span className="ad-slot-label">id 113</span>
-          <EzoicAd id={113} />
+          <span className="ad-slot-label">id 114</span>
+          <EzoicAd id={114} />
         </div>
         <div className="ad-slot">
           <span className="ad-slot-label">id 102 · required · 300x250</span>
