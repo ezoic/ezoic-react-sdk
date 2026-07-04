@@ -27,20 +27,20 @@ export function ImperativeSection(): ReactElement {
     log('push(): command queued on ezstandalone.cmd');
   };
   const runShowAds = (): void => {
-    showAds(101, 102, 103);
-    log('showAds(101, 102, 103)');
+    showAds(113, 102, 103);
+    log('showAds(113, 102, 103)');
   };
   const runDisplayMore = (): void => {
     displayMore(104, 105);
     log('displayMore(104, 105)');
   };
   const runRefresh = (): void => {
-    refreshAds(101, 102);
-    log('refreshAds(101, 102)');
+    refreshAds(113, 102);
+    log('refreshAds(113, 102)');
   };
   const runDestroyOne = (): void => {
-    destroyPlaceholders(101);
-    log('destroyPlaceholders(101)');
+    destroyPlaceholders(113);
+    log('destroyPlaceholders(113)');
   };
   const runDestroyAll = (): void => {
     destroyAll();
@@ -60,7 +60,7 @@ export function ImperativeSection(): ReactElement {
       <h2 className="section-title">Imperative SDK controls</h2>
       <p className="section-desc">
         The raw useEzoic() methods. These act on placeholders rendered elsewhere on this page — the
-        display section owns ids 101–103 and the dynamic section owns 104–110 — so showAds/refreshAds/
+        display section owns ids 113, 102, 103 and the dynamic section owns 104–110 — so showAds/refreshAds/
         destroyPlaceholders here drive those slots, and destroyAll() clears every placeholder on the
         page. In a real app, avoid destroyAll()/destroyPlaceholders() on ids owned by mounted EzoicAd
         components — those manage their own lifecycle. isReady: <strong>{String(isReady)}</strong>{' '}
