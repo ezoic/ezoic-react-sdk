@@ -375,23 +375,24 @@ undefined` (undefined until `sa.min.js` loads).
 ### Rewarded ads
 
 Rewarded ads let a visitor watch an ad in exchange for a reward (unlock content,
-in-game currency, etc.). They are served by a **separate** bundle from your
-site-specific rewarded loader script — its own `cmd` queue, independent of
-`sa.min.js`. The loader URL looks like
-`https://<your-domain-handler-host>/porpoiseant/ezadloadrewarded.js`; find the
-exact host in your Ezoic integration and pass it to the hook as `loaderUrl`.
+in-game currency, etc.). They are served by a **separate** bundle
+(`window.ezRewardedAds`) with its own `cmd` queue, independent of `sa.min.js`.
 
-`useEzoicRewarded()` injects that loader once, wraps every rewarded method as a
-promise, and surfaces the `ezRewardedInitiated` / `ezRewardedDisplayed` /
-`ezRewardedClosed` window events as state:
+**No loader URL on Ezoic JS-integrated pages.** Because this SDK bootstraps the
+Ezoic header scripts, the default mode does **not** inject a loader script.
+Instead `useEzoicRewarded()` pushes `ezstandalone.initRewardedAds(...)` once, and
+the Ezoic runtime serves the host-correct rewarded loader (with your domain
+config) inside its own response and drains `window.ezRewardedAds.cmd`. You do
+not supply, and should not hardcode, a per-site loader URL. The hook wraps every
+rewarded method as a promise and surfaces the `ezRewardedInitiated` /
+`ezRewardedDisplayed` / `ezRewardedClosed` window events as state:
 
 ```tsx
 import { useEzoicRewarded } from '@ezoic/react-sdk';
 
 function UnlockButton() {
-  const { requestWithOverlay, displayed } = useEzoicRewarded({
-    loaderUrl: 'https://<your-domain-handler-host>/porpoiseant/ezadloadrewarded.js',
-  });
+  // Default mode: no loaderUrl — the Ezoic runtime serves the loader for you.
+  const { requestWithOverlay, displayed } = useEzoicRewarded();
 
   async function onClick() {
     // Recommended flow: a call-to-action overlay explains the reward first.
@@ -407,6 +408,24 @@ function UnlockButton() {
 }
 ```
 
+**Scope the placements (optional).** Pass `placements` to control which
+site-wide rewarded formats the runtime enables (omitted keys default to
+enabled). The first mount's placements win; the hook triggers the runtime init
+once per page:
+
+```tsx
+const rewarded = useEzoicRewarded({
+  placements: { anchor: false, interstitial: false, video: true, sideRails: false },
+});
+```
+
+**Escape hatch — `loaderUrl`.** Only for pages that are **not** Ezoic
+JS-integrated (they do not load `sa.min.js` through this SDK). Pass
+`useEzoicRewarded({ loaderUrl })` to inject the site-specific
+`https://<your-domain-handler-host>/porpoiseant/ezadloadrewarded.js` script
+(from your Ezoic dashboard rewarded snippet) as a `<script>` tag instead of
+letting the runtime serve it. `placements` is ignored in this mode.
+
 Outcome shapes match the rewarded API:
 
 - `request(config?)` → `{ status, msg, adInfo? }` — pre-fetches an ad without showing it.
@@ -419,10 +438,11 @@ Outcome shapes match the rewarded API:
   the ad becoming ready.
 
 For site-wide rewarded formats (anchor, interstitial, floating video, side
-rails), call `initRewardedAds(placements?)` once at boot — this drives
-`ezstandalone.initRewardedAds` on the standard `cmd` queue. Every format defaults
-to **enabled**: with no argument all four are on, and omitting a key leaves that
-format on. Only an explicit `false` disables a format — e.g.
+rails), the default `useEzoicRewarded({ placements })` calls
+`ezstandalone.initRewardedAds` for you once per page. Call `initRewardedAds(placements?)`
+directly only to reconfigure the runtime's site-wide rewarded formats later. Every
+format defaults to **enabled**: with no argument all four are on, and omitting a
+key leaves that format on. Only an explicit `false` disables a format — e.g.
 `initRewardedAds({ video: false })` keeps anchor, interstitial, and side rails on
 while turning off floating video.
 
@@ -442,6 +462,14 @@ into one `displayMoreVideo(...divIds)` call; the bundle appends to its video
 registry without clobbering, so same-tick mounts share one call and later mounts
 add ids safely. On unmount the slot is torn down with
 `destroyVideoPlaceholders(divId)`.
+
+**Requires page-level ad init first.** The Ezoic runtime only requests queued
+video placeholders once the page's ad scripts have loaded — which happens when
+the page runs some page-level ad init (any `<EzoicAd>` / `showAds` display
+placement, or rewarded init via `useEzoicRewarded`). A page whose only Ezoic
+surface is `<EzoicVideo>` never triggers that load, so the video stays queued and
+never fills. Mount at least one display ad (or enable rewarded ads) on any page
+that uses `<EzoicVideo>`.
 
 ```tsx
 import { EzoicProvider, EzoicVideo } from '@ezoic/react-sdk';
@@ -467,7 +495,10 @@ div. Mount-once semantics: `videoId`, `float`, and `scriptUrl` are read on mount
 import { EzoicVideoEmbed } from '@ezoic/react-sdk';
 
 function VideoBlock() {
-  return <EzoicVideoEmbed videoId="YOUR_VIDEO_ID" float />;
+  // Use your own Open Video content id from the dashboard. An Open Video embed
+  // renders nothing for a nonexistent id — the id below is a real Ezoic-owned
+  // demo video.
+  return <EzoicVideoEmbed videoId="zn0TPhaPiju" float />;
 }
 ```
 
@@ -567,7 +598,7 @@ unmount. No manual queue calls are needed.
 | `isInterstitialAllowed()`                                           | `boolean \| undefined` — whether the interstitial is allowed (undefined until loaded).                                                                                                                                                 |
 | `setOutstreamAllowed(bool, opts?)`                                  | Allows/disallows floating outstream. Returns `Promise<boolean \| undefined>` (resolves the bundle result, or `undefined` if queued before load).                                                                                       |
 | `isOutstreamAllowed()`                                              | `boolean \| undefined` — whether floating outstream is allowed (undefined until loaded).                                                                                                                                               |
-| `useEzoicRewarded({ loaderUrl? })`                                  | Hook for rewarded ads. Injects the site-specific loader and returns `{ ready, initiated, displayed, closed, lastEvent, register, request, show, requestAndShow, requestWithOverlay, contentLocker, initRewardedAds }`. SSR-safe.       |
+| `useEzoicRewarded({ placements?, loaderUrl? })`                    | Hook for rewarded ads. Default (runtime-served) mode needs no URL: it triggers `ezstandalone.initRewardedAds(placements)` once so Ezoic serves the loader. `loaderUrl` is an escape hatch for non-Ezoic-integrated pages (injects the loader; `placements` ignored). Returns `{ ready, initiated, displayed, closed, lastEvent, register, request, show, requestAndShow, requestWithOverlay, contentLocker, initRewardedAds }`. SSR-safe. |
 | `requestRewarded(config?)`                                          | Promise wrapper for `ezRewardedAds.request` → `{ status, msg, adInfo? }`.                                                                                                                                                              |
 | `showRewarded(config?)`                                             | Promise wrapper for `ezRewardedAds.show` → `{ status, reward, msg, adInfo?, userInfo? }`.                                                                                                                                              |
 | `requestAndShowRewarded(config?)`                                   | Promise wrapper for `ezRewardedAds.requestAndShow` (no call-to-action modal) → show outcome.                                                                                                                                           |
@@ -584,6 +615,7 @@ unmount. No manual queue calls are needed.
 | `pushOpenVideoPlayer(entry)`                                        | Pushes an `{ target, videoID?, playlist?, float? }` entry onto `window.openVideoPlayers` (guard-only init, never reset). No-op on the server.                                                                                          |
 | `OPEN_VIDEO_SCRIPT_URL`                                             | The Open Video (`open.video/video.js`) script URL.                                                                                                                                                                                     |
 | `ensureRewardedScript(loaderUrl)`                                   | Imperative, idempotent injection of the rewarded loader + `cmd` stub (advanced / non-React).                                                                                                                                           |
+| `isRewardedLoaderPresent()`                                        | `true` when a real rewarded loader `<script>` is on the page (SDK-injected or a host `/porpoiseant/ezadloadrewarded.js` include). Ignores the SDK's own `cmd`-queue stub. `false` on the server.                                       |
 | `pushToRewardedCmd(fn)`                                             | Queues a command on `window.ezRewardedAds.cmd`; no-op on the server.                                                                                                                                                                   |
 | `REWARDED_EVENTS`                                                   | Read-only map of the rewarded window event names (`ezRewardedInitiated`, etc.).                                                                                                                                                        |
 | `ensureEzoicScripts(opts)`                                          | Imperative, order-safe, idempotent script injection (advanced / non-React).                                                                                                                                                            |

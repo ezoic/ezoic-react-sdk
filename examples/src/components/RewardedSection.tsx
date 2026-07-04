@@ -1,21 +1,19 @@
-import { useState, type ReactElement } from 'react';
+import { type ReactElement } from 'react';
 import { useEzoicRewarded } from '@ezoic/react-sdk';
 import { useEventLog } from '../eventLog';
 
 /**
- * Rewarded ads. A text input supplies the site-specific loader URL (the
- * `/porpoiseant/ezadloadrewarded.js` script from the publisher dashboard). The
- * "Request & show reward" button awaits `requestAndShow()` inside try/catch and
- * logs the outcome; without a loader URL the request will not resolve to a fill
- * locally.
+ * Rewarded ads in the default (runtime-served) mode: no loader URL. Because the
+ * SDK bootstraps the Ezoic header scripts, `useEzoicRewarded({ placements })`
+ * pushes `ezstandalone.initRewardedAds(...)` and the Ezoic runtime serves the
+ * host-correct rewarded loader itself. The "Request & show reward" button awaits
+ * `requestAndShow()` inside try/catch and logs the outcome.
  */
 export function RewardedSection(): ReactElement {
   const { log } = useEventLog();
-  const [loaderUrl, setLoaderUrl] = useState('');
-  const trimmed = loaderUrl.trim();
 
   const { ready, initiated, displayed, closed, requestAndShow } = useEzoicRewarded({
-    loaderUrl: trimmed || undefined,
+    placements: { anchor: false, interstitial: false, video: true, sideRails: false },
   });
 
   const onRequest = async (): Promise<void> => {
@@ -34,19 +32,10 @@ export function RewardedSection(): ReactElement {
     <section className="section">
       <h2 className="section-title">Rewarded ads</h2>
       <p className="section-desc">
-        Provide the site-specific rewarded loader URL from your publisher dashboard. Without it, the
-        request cannot resolve to a fill locally.
+        No loader URL is needed on Ezoic-integrated pages — the loader is served by Ezoic
+        automatically after <code>initRewardedAds</code> runs. This panel scopes the site-wide
+        placements to floating video only.
       </p>
-      <label className="field">
-        <span className="field-label">Loader URL</span>
-        <input
-          className="field-input"
-          type="text"
-          value={loaderUrl}
-          onChange={(e) => setLoaderUrl(e.target.value)}
-          placeholder="https://<yourDomainHandlerHost>/porpoiseant/ezadloadrewarded.js"
-        />
-      </label>
       <button
         className="btn"
         type="button"

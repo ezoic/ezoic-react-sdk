@@ -77,15 +77,39 @@ function urlPathname(url: string): string | null {
   }
 }
 
+/** Host-independent path segment of the Ezoic rewarded loader script. */
+const REWARDED_LOADER_PATH = '/porpoiseant/ezadloadrewarded.js';
+
 /**
- * True when a rewarded loader is already on the page — either one the SDK marked,
- * or any script whose URL path matches the loader path. Matching by path (not the
- * full URL) means a host-injected loader carrying cache-buster query params — or
- * one on the same host with a different query string — is still recognized, so
- * the SDK never adds a second rewarded loader.
+ * True when an actual rewarded loader `<script>` is already on the page — either
+ * one the SDK injected (marked `rewarded-loader`) or a host-HTML script whose
+ * `src` references the canonical `/porpoiseant/ezadloadrewarded.js` path (so a
+ * cache-busted or differently-hosted include still counts).
+ *
+ * Detects real loader script elements ONLY. It deliberately ignores
+ * `window.ezRewardedAds` and its `cmd` queue: the SDK seeds that stub queue
+ * itself, so its presence never implies a loader is on the page. No-op-safe on
+ * the server (returns `false` without a `document`).
+ */
+export function isRewardedLoaderPresent(): boolean {
+  if (typeof document === 'undefined') return false;
+  if (document.querySelector(`script[${MARKER_ATTR}="rewarded-loader"]`)) return true;
+  for (const script of Array.from(document.getElementsByTagName('script'))) {
+    if (script.src && script.src.includes(REWARDED_LOADER_PATH)) return true;
+  }
+  return false;
+}
+
+/**
+ * True when a rewarded loader is already on the page — either one detected by
+ * {@link isRewardedLoaderPresent} (SDK marker or the canonical loader path), or
+ * any script whose URL path matches the specific `loaderUrl`. Matching by path
+ * (not the full URL) means a host-injected loader carrying cache-buster query
+ * params — or one on the same host with a different query string — is still
+ * recognized, so the SDK never adds a second rewarded loader.
  */
 function rewardedLoaderPresent(loaderUrl: string): boolean {
-  if (document.querySelector(`script[${MARKER_ATTR}="rewarded-loader"]`)) return true;
+  if (isRewardedLoaderPresent()) return true;
   const wantedPath = urlPathname(loaderUrl);
   for (const script of Array.from(document.getElementsByTagName('script'))) {
     if (!script.src) continue;

@@ -51,6 +51,7 @@ export type { EzoicConsentState } from './useEzoicConsent';
 export {
   REWARDED_EVENTS,
   ensureRewardedScript,
+  isRewardedLoaderPresent,
   pushToRewardedCmd,
   registerRewarded,
   requestRewarded,

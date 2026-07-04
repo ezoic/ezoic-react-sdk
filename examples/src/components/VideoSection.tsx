@@ -24,9 +24,10 @@ export function VideoSection(): ReactElement {
       <div className="video-block">
         <h3 className="video-title">EzoicVideoEmbed — Open Video</h3>
         <p className="section-desc">
-          Replace <code>videoId</code> with your Open Video content id from the dashboard.
+          Replace <code>videoId</code> with your Open Video content id from the dashboard. This demo
+          uses the real Ezoic-owned id <code>zn0TPhaPiju</code>; a nonexistent id renders nothing.
         </p>
-        <EzoicVideoEmbed videoId="YOUR_OPEN_VIDEO_ID" float />
+        <EzoicVideoEmbed videoId="zn0TPhaPiju" float />
       </div>
     </section>
   );

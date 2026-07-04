@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, renderHook } from '@testing-library/react';
-import { useEzoicRewarded } from './useEzoicRewarded';
+import { act, cleanup, render, renderHook } from '@testing-library/react';
+import { useEzoicRewarded, resetRewardedRuntimeInitForTests } from './useEzoicRewarded';
 import { REWARDED_EVENTS } from './rewarded';
-import type { EzoicCommandQueue, EzoicWindow } from './types';
+import type { EzoicCommandQueue, EzoicRewardedPlacements, EzoicWindow } from './types';
 
 const LOADER_URL = 'https://go.example-host.com/porpoiseant/ezadloadrewarded.js';
 
@@ -27,6 +27,20 @@ function installRewardedAds(ready: boolean): Record<string, unknown> {
   return api;
 }
 
+/**
+ * Installs `window.ezstandalone` with an immediate-executor `cmd` queue and an
+ * `initRewardedAds` spy, so default-mode assertions run the real
+ * `initRewardedAds` → `pushToEzoicCmd` → `ezstandalone.initRewardedAds` path.
+ */
+function installEzstandalone(): ReturnType<typeof vi.fn> {
+  const initSpy = vi.fn();
+  (window as unknown as EzoicWindow).ezstandalone = {
+    cmd: immediateQueue(),
+    initRewardedAds: initSpy,
+  } as unknown as EzoicWindow['ezstandalone'];
+  return initSpy;
+}
+
 function emit(name: string): void {
   act(() => {
     window.dispatchEvent(new Event(name));
@@ -36,12 +50,16 @@ function emit(name: string): void {
 beforeEach(() => {
   document.head.innerHTML = '';
   delete (window as unknown as EzoicWindow).ezRewardedAds;
+  delete (window as unknown as EzoicWindow).ezstandalone;
+  resetRewardedRuntimeInitForTests();
 });
 
 afterEach(() => {
   cleanup();
   document.head.innerHTML = '';
   delete (window as unknown as EzoicWindow).ezRewardedAds;
+  delete (window as unknown as EzoicWindow).ezstandalone;
+  resetRewardedRuntimeInitForTests();
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -60,7 +78,8 @@ describe('useEzoicRewarded', () => {
     expect(typeof result.current.initRewardedAds).toBe('function');
   });
 
-  it('injects the loader script once when loaderUrl is provided', () => {
+  it('injects the loader script once when loaderUrl is provided and does not call initRewardedAds', () => {
+    const initSpy = installEzstandalone();
     const { rerender } = renderHook((props: { loaderUrl?: string }) => useEzoicRewarded(props), {
       initialProps: { loaderUrl: LOADER_URL },
     });
@@ -69,11 +88,89 @@ describe('useEzoicRewarded', () => {
     expect(
       document.querySelector('script[data-ezoic-sdk="rewarded-loader"]')!.getAttribute('src'),
     ).toBe(LOADER_URL);
+    // Escape-hatch mode never triggers the runtime-served init.
+    expect(initSpy).not.toHaveBeenCalled();
   });
 
-  it('does not inject a loader when loaderUrl is omitted', () => {
-    renderHook(() => useEzoicRewarded());
-    expect(document.querySelectorAll('script[data-ezoic-sdk="rewarded-loader"]').length).toBe(0);
+  it('ignores placements in explicit loaderUrl mode', () => {
+    const initSpy = installEzstandalone();
+    renderHook(() =>
+      useEzoicRewarded({ loaderUrl: LOADER_URL, placements: { video: true } }),
+    );
+    expect(document.querySelectorAll('script[data-ezoic-sdk="rewarded-loader"]').length).toBe(1);
+    expect(initSpy).not.toHaveBeenCalled();
+  });
+
+  describe('default (runtime-served) mode', () => {
+    it('does not inject a loader when loaderUrl is omitted', () => {
+      installEzstandalone();
+      renderHook(() => useEzoicRewarded());
+      expect(document.querySelectorAll('script[data-ezoic-sdk="rewarded-loader"]').length).toBe(0);
+    });
+
+    it('pushes initRewardedAds once across multiple hook instances and re-renders (no placements)', () => {
+      const initSpy = installEzstandalone();
+      function TwoHooks(): null {
+        useEzoicRewarded();
+        useEzoicRewarded();
+        return null;
+      }
+      const { rerender } = render(<TwoHooks />);
+      rerender(<TwoHooks />);
+      rerender(<TwoHooks />);
+      expect(initSpy).toHaveBeenCalledTimes(1);
+      expect(initSpy).toHaveBeenCalledWith(undefined);
+    });
+
+    it('skips initRewardedAds when an SDK-injected rewarded loader is already present', () => {
+      const initSpy = installEzstandalone();
+      const loader = document.createElement('script');
+      loader.setAttribute('data-ezoic-sdk', 'rewarded-loader');
+      loader.setAttribute('src', LOADER_URL);
+      document.head.appendChild(loader);
+      renderHook(() => useEzoicRewarded());
+      expect(initSpy).not.toHaveBeenCalled();
+    });
+
+    it('skips initRewardedAds when a host-HTML rewarded loader script is already present', () => {
+      const initSpy = installEzstandalone();
+      const loader = document.createElement('script');
+      // No SDK marker — a hand-included loader on any host, with a cache buster.
+      loader.setAttribute('src', 'https://cdn.example.com/porpoiseant/ezadloadrewarded.js?cb=123');
+      document.head.appendChild(loader);
+      renderHook(() => useEzoicRewarded());
+      expect(initSpy).not.toHaveBeenCalled();
+    });
+
+    it('still triggers initRewardedAds when only the SDK cmd-queue stub exists (no loader script)', () => {
+      const initSpy = installEzstandalone();
+      // The SDK's own rewarded cmd-queue stub must NOT count as a loader.
+      (window as unknown as EzoicWindow).ezRewardedAds = {
+        cmd: [],
+      } as unknown as EzoicWindow['ezRewardedAds'];
+      renderHook(() => useEzoicRewarded());
+      expect(initSpy).toHaveBeenCalledTimes(1);
+      expect(initSpy).toHaveBeenCalledWith(undefined);
+    });
+
+    it('forwards the first mount placements to initRewardedAds exactly once', () => {
+      const initSpy = installEzstandalone();
+      const placements: EzoicRewardedPlacements = {
+        anchor: false,
+        interstitial: false,
+        video: true,
+        sideRails: false,
+      };
+      const { rerender } = renderHook(
+        (props: { placements?: EzoicRewardedPlacements }) => useEzoicRewarded(props),
+        { initialProps: { placements } },
+      );
+      // A later mount with different placements must not re-trigger (first wins).
+      rerender({ placements: { video: false } });
+      renderHook(() => useEzoicRewarded({ placements: { anchor: true } }));
+      expect(initSpy).toHaveBeenCalledTimes(1);
+      expect(initSpy).toHaveBeenCalledWith(placements);
+    });
   });
 
   it('reports ready immediately when the loader has already initialized', () => {

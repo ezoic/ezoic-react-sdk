@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   REWARDED_EVENTS,
   ensureRewardedScript,
   initRewardedAds,
+  isRewardedLoaderPresent,
   pushToRewardedCmd,
   registerRewarded,
   requestAndShowRewarded,
@@ -59,15 +60,46 @@ export interface EzoicRewardedApi extends EzoicRewardedState {
   initRewardedAds: (placements?: EzoicRewardedPlacements) => void;
 }
 
-/** Options for {@link useEzoicRewarded}. */
+/** Options for {@link useEzoicRewarded}. Every field is optional. */
 export interface UseEzoicRewardedOptions {
   /**
-   * Full URL of the site-specific rewarded loader script
-   * (`{yourDomainHandlerHost}/porpoiseant/ezadloadrewarded.js`). When provided,
-   * the hook injects it once (idempotently). Omit if the loader is already on
-   * the page by other means.
+   * **Escape hatch — usually omit this.** Full URL of the site-specific rewarded
+   * loader script (`{yourDomainHandlerHost}/porpoiseant/ezadloadrewarded.js`).
+   *
+   * Only supply this for pages that are **not** Ezoic JS-integrated (i.e. that do
+   * not load `sa.min.js`/`ezstandalone`). When provided, the hook injects that
+   * loader once (idempotently) as a `<script>` tag. On a normal Ezoic
+   * JS-integrated page leave it unset: the default (runtime-served) mode lets the
+   * Ezoic runtime serve the host-correct rewarded loader for you (see
+   * {@link useEzoicRewarded}), so a per-site URL is neither needed nor correct.
    */
   loaderUrl?: string;
+
+  /**
+   * Site-wide rewarded placement toggles forwarded to
+   * `ezstandalone.initRewardedAds` in the default (runtime-served) mode. Omitted
+   * keys fall back to the runtime default (all enabled). **Ignored** when an
+   * explicit {@link UseEzoicRewardedOptions.loaderUrl} is supplied.
+   */
+  placements?: EzoicRewardedPlacements;
+}
+
+/**
+ * Module-level guard so the default runtime-served rewarded loader is triggered
+ * at most once per page, regardless of how many {@link useEzoicRewarded}
+ * instances mount or how often they re-render. The first default-mode mount
+ * wins; its `placements` are the ones forwarded to `initRewardedAds`.
+ */
+let rewardedRuntimeInitTriggered = false;
+
+/**
+ * Resets the module-level runtime-served init guard.
+ *
+ * @internal Test-only. Not exported from the package entry point; exists so unit
+ * tests can isolate the once-per-page init between cases.
+ */
+export function resetRewardedRuntimeInitForTests(): void {
+  rewardedRuntimeInitTriggered = false;
 }
 
 const INITIAL_STATE: EzoicRewardedState = {
@@ -85,18 +117,42 @@ const INITIAL_STATE: EzoicRewardedState = {
  * `{ status, reward, msg, adInfo?, userInfo? }`; `request` resolves with
  * `{ status, msg, adInfo? }`.
  *
+ * **Default (runtime-served) mode — no URL needed on Ezoic-integrated pages.**
+ * Because this SDK bootstraps the Ezoic header scripts (`sa.min.js` /
+ * `ezstandalone`), the default mode does **not** inject any script. Instead, on
+ * mount (client only) it pushes `ezstandalone.initRewardedAds(placements)` once
+ * globally, and the Ezoic runtime serves the host-correct rewarded loader (with
+ * your domain config) inside its own response and drains
+ * `window.ezRewardedAds.cmd`. The push is guarded so multiple hook mounts /
+ * re-renders never re-trigger it (the first caller's `placements` win).
+ *
+ * **Escape hatch — `loaderUrl`.** Only for pages that are **not** Ezoic
+ * JS-integrated: passing `loaderUrl` keeps the legacy behavior of injecting the
+ * site-specific `{host}/porpoiseant/ezadloadrewarded.js` loader as a `<script>`
+ * tag instead of relying on the runtime. `placements` is ignored in this mode.
+ * The default mode also detects an already-present loader (an SDK-injected one
+ * or a host-HTML `/porpoiseant/ezadloadrewarded.js` include) and skips its init
+ * so a second loader is never served.
+ *
+ * **Mixed modes on one page.** If one component passes `loaderUrl` while another
+ * uses the default mode, each is an idempotent one-way trigger that fires at
+ * most once, and mount order decides which runs first. If the `loaderUrl`
+ * component mounts first, its injected `<script>` is in the DOM and the default
+ * mode detects it and skips its init. The reverse order is not fully
+ * de-duplicated: the default mode asks the runtime to serve a loader
+ * asynchronously (no DOM `<script>` yet), so a `loaderUrl` component mounting
+ * right after can still inject its own. Prefer a single mode per page.
+ *
  * SSR-safe: on the server (and the first client render) it returns the initial
- * state and touches no `window`. Pass `loaderUrl` to inject the site-specific
- * rewarded loader; the hook subscribes to the `ezRewardedInitiated` /
- * `ezRewardedDisplayed` / `ezRewardedClosed` window events and reflects them in
- * state, removing the listeners on unmount.
+ * state and touches no `window`. The hook subscribes to the
+ * `ezRewardedInitiated` / `ezRewardedDisplayed` / `ezRewardedClosed` window
+ * events and reflects them in state, removing the listeners on unmount.
  *
  * @example
  * ```tsx
  * function WatchAdButton() {
- *   const { requestWithOverlay, displayed } = useEzoicRewarded({
- *     loaderUrl: 'https://go.example-host.com/porpoiseant/ezadloadrewarded.js',
- *   });
+ *   // No loaderUrl on an Ezoic JS-integrated page — the runtime serves it.
+ *   const { requestWithOverlay, displayed } = useEzoicRewarded();
  *   const onClick = async () => {
  *     const { reward } = await requestWithOverlay(
  *       { header: 'Unlock this article', body: ['Watch a short ad to continue.'] },
@@ -109,14 +165,34 @@ const INITIAL_STATE: EzoicRewardedState = {
  * ```
  */
 export function useEzoicRewarded(options: UseEzoicRewardedOptions = {}): EzoicRewardedApi {
-  const { loaderUrl } = options;
+  const { loaderUrl, placements } = options;
   const [state, setState] = useState<EzoicRewardedState>(INITIAL_STATE);
 
-  // Inject the site-specific loader when a URL is provided (idempotent, SSR-safe).
+  // Keep the latest placements in a ref so the init effect can read them without
+  // depending on an unstable inline object (which would churn the effect).
+  const placementsRef = useRef(placements);
+  placementsRef.current = placements;
+
+  // Two mutually exclusive modes (idempotent, SSR-safe):
+  // - loaderUrl provided (escape hatch): inject the site-specific loader script.
+  // - loaderUrl omitted (default): trigger initRewardedAds ONCE globally so the
+  //   Ezoic runtime serves the host-correct rewarded loader itself. `placements`
+  //   is read from the ref, and the module-level guard makes the first
+  //   default-mode mount the only one that fires.
   useEffect(() => {
     if (loaderUrl) {
       ensureRewardedScript(loaderUrl);
+      return;
     }
+    if (typeof window === 'undefined') return;
+    if (rewardedRuntimeInitTriggered) return;
+    rewardedRuntimeInitTriggered = true;
+    // If a real rewarded loader <script> is already on the page (e.g. the host
+    // HTML hand-includes /porpoiseant/ezadloadrewarded.js), don't trigger the
+    // runtime to serve a SECOND loader. Detects loader script elements only —
+    // never the SDK's own cmd-queue stub (which this hook itself seeds).
+    if (isRewardedLoaderPresent()) return;
+    initRewardedAds(placementsRef.current);
   }, [loaderUrl]);
 
   // Track readiness and the rewarded lifecycle window events.

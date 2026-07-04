@@ -11,6 +11,7 @@ import { useEzoicRewarded } from './useEzoicRewarded';
 import {
   ensureRewardedScript,
   initRewardedAds,
+  isRewardedLoaderPresent,
   registerRewarded,
   requestRewarded,
   rewardedContentLocker,
@@ -67,7 +68,18 @@ describe('server-side rendering', () => {
     expect(html).not.toContain('ezojs.com');
   });
 
-  it('renders a child calling useEzoicRewarded without throwing and reports not-ready', () => {
+  it('renders a child calling useEzoicRewarded (default mode) without throwing and reports not-ready', () => {
+    function Child(): string {
+      // Default (runtime-served) mode — no loaderUrl. Effects never run during
+      // renderToString, so nothing touches window on the server.
+      const { ready, initiated } = useEzoicRewarded({ placements: { video: true } });
+      return `rewarded:${String(ready)}:${String(initiated)}`;
+    }
+    const html = renderToString(createElement(EzoicProvider, null, createElement(Child)));
+    expect(html).toContain('rewarded:false:false');
+  });
+
+  it('renders a child calling useEzoicRewarded (loaderUrl escape hatch) without throwing', () => {
     function Child(): string {
       const { ready, initiated } = useEzoicRewarded({
         loaderUrl: 'https://go.example-host.com/porpoiseant/ezadloadrewarded.js',
@@ -85,6 +97,7 @@ describe('server-side rendering', () => {
     ).not.toThrow();
     expect(() => rewardedContentLocker('https://example.com/premium')).not.toThrow();
     expect(() => initRewardedAds({ anchor: true })).not.toThrow();
+    expect(isRewardedLoaderPresent()).toBe(false);
   });
 
   it('rewarded promise wrappers reject on the server rather than touching window', async () => {
