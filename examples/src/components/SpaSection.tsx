@@ -10,7 +10,7 @@ const ROUTES: readonly RouteKey[] = ['home', 'article', 'gallery'];
 // they persist across simulated routes. Because these <EzoicAd> components never
 // unmount on navigation, useEzoicPageView is the sole driver of the per-route
 // teardown + reload — there is no double-fire with EzoicAd's own mount/unmount.
-const SPA_IDS: readonly number[] = [111, 112];
+const SPA_IDS: readonly number[] = [922, 923];
 
 /**
  * Simulates single-page-application navigation without a real router. The ad

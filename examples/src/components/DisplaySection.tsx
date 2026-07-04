@@ -16,16 +16,16 @@ export function DisplaySection(): ReactElement {
       </p>
       <div className="ad-grid">
         <div className="ad-slot">
-          <span className="ad-slot-label">id 114</span>
-          <EzoicAd id={114} />
+          <span className="ad-slot-label">id 910</span>
+          <EzoicAd id={910} />
         </div>
         <div className="ad-slot">
-          <span className="ad-slot-label">id 102 · required · 300x250</span>
-          <EzoicAd id={102} sizes={['300x250']} required />
+          <span className="ad-slot-label">id 912 · required · 300x250</span>
+          <EzoicAd id={912} sizes={['300x250']} required />
         </div>
         <div className="ad-slot">
-          <span className="ad-slot-label">id 103</span>
-          <EzoicAd id={103} />
+          <span className="ad-slot-label">id 913</span>
+          <EzoicAd id={913} />
         </div>
       </div>
     </section>
