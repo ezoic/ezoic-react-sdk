@@ -24,7 +24,7 @@ export function DisplaySection(): ReactElement {
           <span className="ad-slot-label">id 912 · required · 300x250</span>
           <EzoicAd id={912} sizes={['300x250']} required />
         </div>
-        <div className="ad-slot">
+        <div className="ad-slot ad-slot--wide">
           <span className="ad-slot-label">id 913 · 728x90, 300x250</span>
           <EzoicAd id={913} sizes={['728x90', '300x250']} required />
         </div>

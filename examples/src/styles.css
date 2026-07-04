@@ -86,19 +86,24 @@ code {
 }
 
 .ad-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
   gap: 16px;
   margin-top: 12px;
 }
 
 .ad-slot {
-  flex: 0 0 auto;
-  min-width: 200px;
+  min-width: 0;
   padding: 12px;
   border: 1px dashed var(--border);
   border-radius: 8px;
   background: var(--panel-2);
+}
+
+/* Slots carrying a leaderboard-sized creative (728x90) span the full grid row
+   so the wide ad is never cramped into a single minmax column. */
+.ad-slot--wide {
+  grid-column: 1 / -1;
 }
 
 .ad-slot-label {
@@ -237,4 +242,22 @@ code {
 .event-log-msg {
   display: block;
   word-break: break-word;
+}
+
+/* Below the width where a 340px fixed panel + 380px reserved gutter would crush
+   the main column, drop the reserved space and stack the log full-width instead
+   so ad sections keep their usable width. */
+@media (max-width: 1280px) {
+  .app-header,
+  .app-main {
+    padding-right: 32px;
+  }
+
+  .event-log {
+    position: static;
+    width: auto;
+    height: auto;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
 }
