@@ -380,12 +380,21 @@ in-game currency, etc.). They are served by a **separate** bundle
 
 **No loader URL on Ezoic JS-integrated pages.** Because this SDK bootstraps the
 Ezoic header scripts, the default mode does **not** inject a loader script.
-Instead `useEzoicRewarded()` pushes `ezstandalone.initRewardedAds(...)` once, and
-the Ezoic runtime serves the host-correct rewarded loader (with your domain
+Instead `useEzoicRewarded()` schedules `ezstandalone.initRewardedAds(...)` once,
+and the Ezoic runtime serves the host-correct rewarded loader (with your domain
 config) inside its own response and drains `window.ezRewardedAds.cmd`. You do
-not supply, and should not hardcode, a per-site loader URL. The hook wraps every
-rewarded method as a promise and surfaces the `ezRewardedInitiated` /
-`ezRewardedDisplayed` / `ezRewardedClosed` window events as state:
+not supply, and should not hardcode, a per-site loader URL. The init call is
+**deferred, not fired on mount**: the runtime's `initRewardedAds` runs
+`showAds([12])` internally, and issuing that before the page's first `showAds`
+has started the initial ad load wedges the whole page. The hook waits until the
+initial ad load has started — detected via the `/sa.go` ad request in resource
+timing, a GPT container rendered inside an Ezoic placeholder, or
+`ezstandalone.enabled` when a publisher opts into the public `enable()` — before
+dispatching, or, on a rewarded-only page with no display ads mounted, fires after
+a short grace window.
+The hook wraps every rewarded method as a promise and surfaces the
+`ezRewardedInitiated` / `ezRewardedDisplayed` / `ezRewardedClosed` window events
+as state:
 
 ```tsx
 import { useEzoicRewarded } from '@ezoic/react-sdk';

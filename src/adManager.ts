@@ -164,6 +164,20 @@ export function isPlaceholderOwned(id: number): boolean {
 }
 
 /**
+ * Whether any `<EzoicAd>` display placeholder is currently mounted on the page.
+ * Numeric-`id` and semantic-`location` placeholders both own an id (a location
+ * resolves to one, then acquires it), so a non-empty owner registry means at
+ * least one display placement is live and will drive the page's initial ad load.
+ *
+ * {@link useEzoicRewarded}'s deferred init scheduler reads this at its grace
+ * deadline to tell a rewarded-only page — where `initRewardedAds` is itself the
+ * ad bootstrap — apart from a page whose display ads start the load on their own.
+ */
+export function hasMountedPlacements(): boolean {
+  return ownedIds.size > 0;
+}
+
+/**
  * Releases an owned `<EzoicAd>` id on unmount. If the id is still waiting in the
  * current batch it never reached `showAds`, so it is simply dropped. Otherwise
  * the placeholder was shown and is torn down with `destroyPlaceholders(id)`.

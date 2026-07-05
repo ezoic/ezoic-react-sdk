@@ -146,6 +146,16 @@ export type TcfApi = (
  */
 export interface EzstandaloneApi {
   cmd: EzoicCommandQueue;
+  /**
+   * `true` only when a publisher calls the public `enable()`. This is the public
+   * `ezstandalone` wrapper's own flag; the internal standalone instance the
+   * display logic uses tracks a separate flag that is NOT mirrored here, so a
+   * fully successful initial ad load commonly leaves this `false`. Do not treat
+   * `enabled` alone as "the initial load has started" — {@link useEzoicRewarded}'s
+   * deferred init scheduler only uses it as one of several signals (see that
+   * hook's `hasInitialAdLoadStarted`). Absent before the bundle loads.
+   */
+  enabled?: boolean;
   /** Requests one or more display placeholders. Debounced internally by the bundle. */
   showAds?(...placeholders: EzoicShowAdsArg[]): void;
   /** Requests additional placeholders after the initial load (infinite scroll / dynamic content). */
