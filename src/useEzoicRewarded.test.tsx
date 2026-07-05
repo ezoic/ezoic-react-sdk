@@ -50,8 +50,7 @@ function installEzstandalone(enabled = true): ReturnType<typeof vi.fn> {
 /** Flips `window.ezstandalone.enabled` to simulate the initial ad load starting. */
 function setEzstandaloneEnabled(enabled: boolean): void {
   const es = (window as unknown as EzoicWindow).ezstandalone as unknown as
-    | { enabled?: boolean }
-    | undefined;
+    { enabled?: boolean } | undefined;
   if (es) es.enabled = enabled;
 }
 
@@ -114,9 +113,7 @@ describe('useEzoicRewarded', () => {
 
   it('ignores placements in explicit loaderUrl mode', () => {
     const initSpy = installEzstandalone();
-    renderHook(() =>
-      useEzoicRewarded({ loaderUrl: LOADER_URL, placements: { video: true } }),
-    );
+    renderHook(() => useEzoicRewarded({ loaderUrl: LOADER_URL, placements: { video: true } }));
     expect(document.querySelectorAll('script[data-ezoic-sdk="rewarded-loader"]').length).toBe(1);
     expect(initSpy).not.toHaveBeenCalled();
   });
