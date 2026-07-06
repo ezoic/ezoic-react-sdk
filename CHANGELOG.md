@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- CI: add a `react19` job that overlays React 19 (`react@19`, `react-dom@19`, `@types/react@19`, `@types/react-dom@19`) over the standard install and runs typecheck + tests + build, verifying the package's `>=18` peer dependency range against both supported majors (previously only React 18 was exercised in CI).
+
 ### Fixed
 
 - `<EzoicVideo>` / `defineVideo` / `displayMoreVideo`: documented that `divId`
