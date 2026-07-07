@@ -1,0 +1,80 @@
+name: Publish to npm
+
+# Publishes @ezoic/react-sdk to npm using npm Trusted Publishing (OIDC).
+# No NPM_TOKEN is involved: GitHub Actions proves its identity to npm with a
+# short-lived OIDC token, which npm verifies against the Trusted Publisher
+# configured for this package on npmjs.com.
+#
+# Prerequisites (one-time):
+#   1. The package must already exist on npm (npm has no "pending publisher").
+#      Do a single manual bootstrap publish to create it, then never again.
+#   2. On npmjs.com -> the package -> Settings -> Trusted Publisher, add a
+#      GitHub Actions publisher with EXACTLY:
+#        Organization or user: ezoic
+#        Repository:           ezoic-react-sdk
+#        Workflow filename:    publish.yml
+#        Environment name:     release
+#      All fields are case-sensitive; a mismatch fails publish with E404.
+#      The job below sets `environment: release` so the OIDC claim matches.
+#
+# Release: bump the version, then push a matching SemVer tag, e.g.
+#   git tag v1.0.0 && git push origin v1.0.0
+# or run this workflow manually from the Actions tab (workflow_dispatch).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Must match the "Environment name" in the npm Trusted Publisher config.
+    environment: release
+    permissions:
+      contents: read
+      id-token: write # Required for npm Trusted Publishing (OIDC)
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          # Caching is intentionally disabled for release builds.
+
+      # Fail fast if a tag push doesn't match package.json, so we never try to
+      # (re)publish a mismatched or already-published version.
+      - name: Verify tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME ($TAG_VERSION) does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      # Trusted publishing requires npm >= 11.5.1. Node 24 ships a compatible
+      # npm, but pin to latest to be safe.
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run build
+
+      # publint + arethetypeswrong against the packed tarball.
+      - run: npm run lint:publish
+
+      # prepublishOnly rebuilds during publish. Provenance is generated
+      # automatically for OIDC publishes from a public repo; the flag makes
+      # the intent explicit.
+      - run: npm publish --provenance --access public
