@@ -25,6 +25,21 @@ hand-writing the raw snippets.
 
 ## Install
 
+The package is not yet published to the npm registry. To try it today, build it
+from source and install the packed tarball:
+
+```sh
+git clone https://github.com/ezoic/ezoic-react-sdk.git
+cd ezoic-react-sdk
+npm ci
+npm run build
+npm pack   # produces ezoic-react-sdk-<version>.tgz
+# then in your app:
+npm install /path/to/ezoic-react-sdk-<version>.tgz
+```
+
+Once published, installation will be:
+
 ```sh
 npm install @ezoic/react-sdk
 ```
