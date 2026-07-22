@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-22
+
 ### Added
 
 - CI: add a `react19` job that overlays React 19 (`react@19`, `react-dom@19`, `@types/react@19`, `@types/react-dom@19`) over the standard install and runs typecheck + tests + build, verifying the package's `>=18` peer dependency range against both supported majors (previously only React 18 was exercised in CI).
@@ -18,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   arguments with `isNaN`, so a non-numeric `divId` is silently dropped and the
   video placeholder never loads. Updated the README example and the demo app's
   `VideoSection` to use a numeric `divId`.
+- README status banner: replaced the stale "Pre-1.0 / under active development"
+  note (which predated the 1.0.0 cut and contradicted the Roadmap) with the
+  feature-complete 1.0 status.
 
 ## [1.0.0] - 2026-07-03
 
@@ -138,5 +143,6 @@ className? style?>` embeds an open.video player independent of `sa.min.js` (no
   CMP scripts the SDK injects at runtime. The demo subtitle no longer assumes a
   localhost context.
 
-[Unreleased]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/ezoic/ezoic-react-sdk/releases/tag/v1.0.0
