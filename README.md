@@ -8,14 +8,13 @@ standalone ad integration so a React app can manage consent scripts, display ad
 placeholders, single-page-app navigation, rewarded ads, and video without
 hand-writing the raw snippets.
 
-> **Pre-1.0 / under active development.** The public API is still being built
-> out and may change before `1.0.0`. This release ships the package foundation,
+> **Status: 1.0, feature-complete.** This release ships the package foundation,
 > `<EzoicProvider>` for consent + script management, the `<EzoicAd>` display
 > component with batched `showAds` and the `useEzoic()` ad-serving passthroughs,
-> single-page-app routing (`useEzoicPageView`), and zero-config location
-> placements (`<EzoicAd location="…" />`). Rewarded ads and video land in
-> subsequent releases (see
-> [Roadmap](#roadmap)). Follow
+> single-page-app routing (`useEzoicPageView`), zero-config location
+> placements (`<EzoicAd location="…" />`), rewarded ads (`useEzoicRewarded`),
+> and video (`<EzoicVideo>`, `<EzoicVideoEmbed>`) — see the
+> [Roadmap](#roadmap). Follow
 > [Ezoic Ads integration docs](https://docs.ezoic.com/docs/ezoicads/integration/)
 > for the underlying behavior.
 
