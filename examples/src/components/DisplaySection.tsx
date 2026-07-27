@@ -2,9 +2,9 @@ import { type ReactElement } from 'react';
 import { EzoicAd } from '@ezoic/react-sdk';
 
 /**
- * Display ads identified by numeric placeholder id. These ids are in the
- * generated 900-range and carry no dashboard sizing, so every placement
- * passes explicit `sizes` with `required` — the canonical pairing. Each ad
+ * Display ads identified by numeric placeholder id. `sizes` is optional —
+ * Ezoic optimizes ad sizes automatically when it is omitted. This demo passes
+ * explicit `sizes` with `required` to show the constrained form. Each ad
  * lives in its own labeled wrapper; the placeholder div itself stays bare.
  */
 export function DisplaySection(): ReactElement {
@@ -12,8 +12,8 @@ export function DisplaySection(): ReactElement {
     <section className="section">
       <h2 className="section-title">Display ads — numeric ids</h2>
       <p className="section-desc">
-        Generated ids have no dashboard sizing, so every placement passes explicit `sizes` with
-        `required` — the canonical pairing.
+        `sizes` is optional — omit it to let Ezoic optimize ad sizes automatically. This demo
+        passes explicit `sizes` with `required` to restrict which sizes may serve.
       </p>
       <div className="ad-grid">
         <div className="ad-slot">

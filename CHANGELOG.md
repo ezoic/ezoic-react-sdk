@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Removed the warning for `location` placements without `sizes`, and corrected docs: `sizes` is optional everywhere — Ezoic optimizes ad sizes automatically; when provided, `sizes` only restricts which sizes may serve.
+
 ## [1.0.1] - 2026-07-22
 
 ### Added

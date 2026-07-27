@@ -13,9 +13,11 @@ interface EzoicAdConfig {
   /** When `true`, requests the slot as required demand (`showAds` object form). */
   required?: boolean;
   /**
-   * Requested creative sizes, each `"WxH"` (e.g. `"728x90"`). Entries that do
-   * not match are dropped with a warning. Read once when the placeholder is
-   * first shown — see the note on {@link EzoicAd} about changing props.
+   * Optional creative size whitelist, each `"WxH"` (e.g. `"728x90"`). When
+   * omitted, Ezoic selects and optimizes sizes automatically. When provided,
+   * only listed sizes may serve. Invalid entries are dropped with a warning.
+   * Read once when the placeholder is first shown — see the note on
+   * {@link EzoicAd} about changing props.
    */
   sizes?: string[];
 }
@@ -85,9 +87,9 @@ function normalizeSizes(sizes: string[] | undefined, id: number): string[] | und
  * ad. To apply new config, remount with a new React `key`.
  *
  * A `location=` placement defaults `required` to `true` (pass `required={false}`
- * to opt out) and should always be given explicit `sizes`, since zero-config
- * placeholders have no dashboard-configured sizing. A numeric `id` placement is
- * dashboard-configured, so `sizes` is optional there.
+ * to opt out). `sizes` is optional for all placements — when omitted, Ezoic
+ * selects and optimizes ad sizes automatically; when provided, it restricts
+ * which sizes may serve.
  *
  * @example
  * ```tsx
@@ -140,15 +142,6 @@ export function EzoicAd(props: EzoicAdProps): ReactElement | null {
       // here; numeric `id` placements are unaffected (undefined stays undefined).
       const effectiveRequired = isLocation ? (cfgRequired ?? true) : cfgRequired;
       const normalizedSizes = normalizeSizes(cfgSizes, effId);
-      const providedNoSizes = cfgSizes === undefined || cfgSizes.length === 0;
-      if (isLocation && providedNoSizes) {
-        console.warn(
-          `[ezoic/react-sdk] <EzoicAd location=${JSON.stringify(location)} /> was shown ` +
-            'without `sizes`. Zero-config location placements have no dashboard-configured ' +
-            "sizing, so they need explicit sizes (e.g. sizes={['728x90','320x50']}) to " +
-            'create ad placements.',
-        );
-      }
       const acquired = acquirePlaceholder({
         id: effId,
         required: effectiveRequired,

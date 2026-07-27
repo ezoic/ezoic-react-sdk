@@ -309,12 +309,13 @@ describe('EzoicAd zero-config location', () => {
     expect(destroyPlaceholders).toHaveBeenCalledWith(909);
   });
 
-  it('location without sizes warns and still defaults required:true', async () => {
+  it('location without sizes does not warn about sizes and still defaults required:true', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { showAds } = installEzstandaloneWithLocations(911);
     render(createElement(EzoicProvider, null, createElement(EzoicAd, { location: 'mid_content' })));
     await settleLocation();
-    expect(warn).toHaveBeenCalledOnce();
+    const sizesWarnings = warn.mock.calls.filter((call) => String(call[0]).includes('sizes'));
+    expect(sizesWarnings).toHaveLength(0);
     expect(showAds).toHaveBeenCalledWith({ id: 911, required: true, sizes: undefined });
   });
 
