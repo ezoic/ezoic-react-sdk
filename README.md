@@ -43,7 +43,7 @@ export default function App() {
   return (
     <EzoicProvider>
       <h1>My site</h1>
-      {/* Recommended: pass sizes + required on every placement. */}
+      {/* sizes is optional — pass it to restrict which sizes may serve. */}
       <EzoicAd id={101} sizes={['728x90', '300x250']} required />
     </EzoicProvider>
   );
@@ -132,10 +132,12 @@ Behavior:
   placeholders makes one ad request (Ezoic adds its own debounce on top).
 - **Cleanup on unmount.** Unmounting an `<EzoicAd>` calls
   `destroyPlaceholders(id)` so the slot is torn down.
-- **`required` / `sizes` props** map to the `showAds` object form. `sizes`
-  entries must be `"WxH"` (e.g. `"728x90"`); invalid entries are dropped with a
-  warning. These are read once when the slot is first shown — to change them,
-  remount with a new React `key`.
+- **`required` / `sizes` props** map to the `showAds` object form. `sizes` is
+  optional — when omitted, Ezoic selects and optimizes ad sizes automatically;
+  when provided, each entry must be `"WxH"` (e.g. `"728x90"`) and restricts
+  which sizes may serve (invalid entries are dropped with a warning). These are
+  read once when the slot is first shown — to change them, remount with a new
+  React `key`.
 - **Never styled.** The placeholder div carries no styling of its own — Ezoic
   manages its dimensions. Wrap `<EzoicAd>` in your own element for layout.
 - **Fail-safe id validation.** Ids must be integers 1–999. An invalid id logs an
@@ -205,10 +207,10 @@ Behavior:
   flagged `required`, so a `location` placement is sent as `required: true`
   unless you pass `required={false}` to opt out. Numeric `id` placements are
   unaffected — `required` stays optional and defaults to unset.
-- **Always pass `sizes` for `location=`.** Zero-config placeholders have no
-  dashboard-configured sizing, so the SDK warns (and the ad will not fill) if
-  `sizes` is omitted. Numeric `id` placements are dashboard-configured, so
-  `sizes` is optional there.
+- **`sizes` is optional.** When omitted, Ezoic selects and optimizes ad sizes
+  automatically — including for `location` placements. When provided, `sizes`
+  restricts which sizes may serve, which is useful when the surrounding layout
+  only fits certain sizes.
 
 For custom containers you can resolve an id yourself with
 `resolveGeneratedId(location)` (returns a promise), or use the pure

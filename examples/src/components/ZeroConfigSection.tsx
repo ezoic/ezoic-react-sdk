@@ -3,16 +3,16 @@ import { EzoicAd } from '@ezoic/react-sdk';
 
 /**
  * Zero-config placements identified by semantic `location`. These resolve to a
- * reserved 900-range id at runtime, default `required: true`, and have no
- * dashboard-configured sizing — so explicit `sizes` must always be passed.
+ * reserved 900-range id at runtime and default `required: true`. `sizes` is
+ * optional — the examples pass explicit sizes to restrict which creatives may serve.
  */
 export function ZeroConfigSection(): ReactElement {
   return (
     <section className="section">
       <h2 className="section-title">Zero-config placements — location</h2>
       <p className="section-desc">
-        Location placements default to required and carry no dashboard sizing, so they must be given
-        explicit sizes.
+        Location placements default to required. `sizes` is optional; these examples pass explicit
+        sizes to restrict which creatives may serve.
       </p>
       <div className="ad-grid">
         <div className="ad-slot ad-slot--wide">
