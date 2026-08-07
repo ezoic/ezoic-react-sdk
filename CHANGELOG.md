@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-08-07
+
 ### Changed
 
 - Removed the warning for `location` placements without `sizes`, and corrected docs: `sizes` is optional everywhere — Ezoic optimizes ad sizes automatically; when provided, `sizes` only restricts which sizes may serve.
+
+### Fixed
+
+- Publish workflow: dropped `registry-url` from `actions/setup-node`. With no `NODE_AUTH_TOKEN` set it wrote a temp `.npmrc` carrying an empty token, which can shadow npm's OIDC trusted-publishing handshake (symptom: provenance signed, then the registry PUT failed with E404).
 
 ## [1.0.1] - 2026-07-22
 
@@ -147,6 +153,7 @@ className? style?>` embeds an open.video player independent of `sa.min.js` (no
   CMP scripts the SDK injects at runtime. The demo subtitle no longer assumes a
   localhost context.
 
-[Unreleased]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/ezoic/ezoic-react-sdk/releases/tag/v1.0.0

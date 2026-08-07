@@ -44,8 +44,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
-          # Caching is intentionally disabled for release builds.
+          # No registry-url: it would write a temp .npmrc referencing an unset
+          # NODE_AUTH_TOKEN, and that empty-token config can shadow the OIDC
+          # trusted-publishing handshake (symptom: provenance signs, then the
+          # registry PUT fails with E404). Caching is disabled for release
+          # builds.
 
       # Fail fast if a tag push doesn't match package.json, so we never try to
       # (re)publish a mismatched or already-published version.
