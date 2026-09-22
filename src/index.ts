@@ -80,7 +80,7 @@ export {
   ensureEzoicScripts,
   pushToEzoicCmd,
 } from './scripts';
-export type { EnsureEzoicScriptsOptions } from './scripts';
+export type { EnsureEzoicScriptsOptions, EzoicConsentMode } from './scripts';
 export type {
   EzoicWindow,
   EzstandaloneApi,

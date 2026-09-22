@@ -71,6 +71,8 @@ export interface EzoicProviderProps extends EnsureEzoicScriptsOptions {
 /**
  * Injects the Ezoic script chain (Gatekeeper CMP → cmd-queue stub →
  * `sa.min.js` → optional analytics) once on mount and exposes the SDK context.
+ * Pass `consent="third-party"` when the site runs its own CMP; the Gatekeeper
+ * scripts are then skipped and the rest of the chain injects unchanged.
  *
  * Injection runs in an effect, so it never touches `window`/`document` during
  * render and is safe under `react-dom/server` and the Next.js app router. Wrap
@@ -90,6 +92,7 @@ export interface EzoicProviderProps extends EnsureEzoicScriptsOptions {
 export function EzoicProvider({
   children,
   saScriptUrl,
+  consent,
   cmpScriptUrls,
   analyticsUrl,
   singlePageApp = true,
@@ -97,7 +100,7 @@ export function EzoicProvider({
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    ensureEzoicScripts({ saScriptUrl, cmpScriptUrls, analyticsUrl });
+    ensureEzoicScripts({ saScriptUrl, consent, cmpScriptUrls, analyticsUrl });
     // Enable SPA mode before the first ad request so client-side navigations
     // reload ads as new pageviews. `setIsSinglePageApplication` is idempotent,
     // so re-running this effect (e.g. if a script URL prop changes) is safe.
@@ -105,7 +108,7 @@ export function EzoicProvider({
       setIsSinglePageApplication(true);
     }
     setIsReady(true);
-  }, [saScriptUrl, cmpScriptUrls, analyticsUrl, singlePageApp]);
+  }, [saScriptUrl, consent, cmpScriptUrls, analyticsUrl, singlePageApp]);
 
   const value = useMemo<EzoicContextValue>(
     () => ({
