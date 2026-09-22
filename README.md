@@ -71,6 +71,10 @@ navigate client-side — see [Single-page-app routing](#single-page-app-routing)
 Pass `singlePageApp={false}` only for a provider that renders on one page that
 never navigates.
 
+If your site runs its own CMP instead of Ezoic's, pass `consent="third-party"`
+so the provider skips the Gatekeeper scripts — see
+[Consent & privacy](#consent--privacy).
+
 ```tsx
 import { EzoicProvider, useEzoic } from '@ezoic/react-sdk';
 
@@ -304,7 +308,32 @@ showAds(201, 202);
 ### Consent & privacy
 
 Ezoic's Gatekeeper CMP is injected first by `<EzoicProvider>` and manages consent
-automatically. These passthroughs let you drive Ezoic's consent behavior, and
+automatically.
+
+#### Using a third-party CMP
+
+If your site runs another CMP (for example one supplied by a different ad
+partner), pass `consent="third-party"` to the provider. The Gatekeeper scripts
+are then not injected; the `ezstandalone.cmd` stub and `sa.min.js` still load in
+order, and idempotency is unchanged.
+
+```tsx
+<EzoicProvider consent="third-party">
+  <YourApp />
+</EzoicProvider>
+```
+
+You must **also** select the third-party CMP option under Consent Management in
+the Ezoic dashboard (Settings > Privacy > Consent Management). That dashboard
+setting is server-side only: on its own it does not stop the SDK from injecting
+Gatekeeper, so without this prop both CMPs load on every page and conflict over
+`window.__tcfapi`. Conversely, the prop only controls script injection and does
+not change the dashboard setting. Set both. `cmpScriptUrls` is ignored when
+`consent` is `"third-party"`.
+
+#### Driving Ezoic's consent
+
+These passthroughs let you drive Ezoic's consent behavior, and
 `useEzoicConsent()` reads live IAB TCF v2.2 consent state:
 
 ```tsx
@@ -585,7 +614,7 @@ unmount. No manual queue calls are needed.
 
 | Export                                                              | Description                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<EzoicProvider singlePageApp?>`                                    | Injects the consent + `sa.min.js` scripts, marks SPA mode at boot (default on), and provides SDK context.                                                                                                                                                                                                                                                                                                                                 |
+| `<EzoicProvider singlePageApp? consent?>`                           | Injects the consent + `sa.min.js` scripts, marks SPA mode at boot (default on), and provides SDK context. `consent="third-party"` skips the Gatekeeper CMP scripts for sites running their own CMP (also select it in the Ezoic dashboard under Settings > Privacy > Consent Management; the dashboard setting alone does not stop the injection).                                                                                        |
 | `<EzoicAd id\|location required? sizes?>`                           | Renders a bare display placeholder div and requests it via batched `showAds`. Pass a numeric `id` (1–999) or a semantic `location` name (zero-config, resolved to a 900-range id).                                                                                                                                                                                                                                                        |
 | `useEzoic()`                                                        | Hook returning `{ isReady, push, showAds, displayMore, destroyPlaceholders, destroyAll, refreshAds, isEzoicUser, setIsSinglePageApplication }`. Must be used inside `<EzoicProvider>`.                                                                                                                                                                                                                                                    |
 | `useEzoicPageView(pageKey, { ids? })`                               | On `pageKey` change, destroys the departing route's ids then `showAds` the new ids (or `destroyAll()` + `showAds()` when `ids` is omitted). Fires nothing on first render.                                                                                                                                                                                                                                                                |

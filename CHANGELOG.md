@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-22
+
+### Added
+
+- `consent` prop on `<EzoicProvider>` (and `consent` option on `ensureEzoicScripts`), typed as `EzoicConsentMode = 'ezoic' | 'third-party'`. `consent="third-party"` skips both Gatekeeper CMP scripts for sites running their own CMP; the `ezstandalone.cmd` stub and `sa.min.js` still inject in order and idempotency is unchanged. Default `'ezoic'` keeps the previous behavior. `cmpScriptUrls` is ignored in third-party mode. Selecting a third-party CMP in the Ezoic dashboard (Settings > Privacy > Consent Management) is server-side only and does not by itself stop the SDK injecting Gatekeeper; publishers on another CMP need this prop as well.
+
 ## [1.0.2] - 2026-08-07
 
 ### Changed
@@ -153,7 +159,8 @@ className? style?>` embeds an open.video player independent of `sa.min.js` (no
   CMP scripts the SDK injects at runtime. The demo subtitle no longer assumes a
   localhost context.
 
-[Unreleased]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/ezoic/ezoic-react-sdk/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/ezoic/ezoic-react-sdk/releases/tag/v1.0.0

@@ -59,6 +59,14 @@ describe('EzoicProvider', () => {
     expect(markerCount('sa')).toBe(1);
   });
 
+  it('skips the Gatekeeper CMP scripts when consent is third-party', () => {
+    render(createElement(EzoicProvider, { consent: 'third-party' }, createElement('div')));
+    expect(markerCount('cmp1')).toBe(0);
+    expect(markerCount('cmp2')).toBe(0);
+    expect(markerCount('cmd-stub')).toBe(1);
+    expect(markerCount('sa')).toBe(1);
+  });
+
   it('renders its children', () => {
     const { getByText } = render(
       createElement(EzoicProvider, null, createElement('span', null, 'child-content')),

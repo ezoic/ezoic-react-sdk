@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CMP_SCRIPT_URL_1, SA_SCRIPT_URL, ensureEzoicScripts, pushToEzoicCmd } from './scripts';
+import {
+  CMP_SCRIPT_URL_1,
+  CMP_SCRIPT_URL_2,
+  SA_SCRIPT_URL,
+  ensureEzoicScripts,
+  pushToEzoicCmd,
+} from './scripts';
 import type { EzoicWindow } from './types';
 
 function injectedMarkers(): string[] {
@@ -111,6 +117,37 @@ describe('ensureEzoicScripts', () => {
     expect(document.querySelector('script[data-ezoic-sdk="analytics"]')!.getAttribute('src')).toBe(
       analytics,
     );
+  });
+
+  it('skips both CMP scripts when consent is third-party, keeping stub then sa', () => {
+    ensureEzoicScripts({ consent: 'third-party' });
+    expect(markerCount('cmp1')).toBe(0);
+    expect(markerCount('cmp2')).toBe(0);
+    expect(srcCount(CMP_SCRIPT_URL_1)).toBe(0);
+    expect(srcCount(CMP_SCRIPT_URL_2)).toBe(0);
+    expect(markerCount('sa')).toBe(1);
+    expect(injectedMarkers()).toEqual(['cmd-stub', 'sa']);
+  });
+
+  it('ignores cmpScriptUrls when consent is third-party', () => {
+    ensureEzoicScripts({
+      consent: 'third-party',
+      cmpScriptUrls: ['https://cdn.example.com/cmp1.js', 'https://cdn.example.com/cmp2.js'],
+    });
+    expect(srcCount('https://cdn.example.com/cmp1.js')).toBe(0);
+    expect(srcCount('https://cdn.example.com/cmp2.js')).toBe(0);
+    expect(injectedMarkers()).toEqual(['cmd-stub', 'sa']);
+  });
+
+  it('stays idempotent when consent is third-party', () => {
+    ensureEzoicScripts({ consent: 'third-party' });
+    ensureEzoicScripts({ consent: 'third-party' });
+    expect(injectedMarkers()).toEqual(['cmd-stub', 'sa']);
+  });
+
+  it('injects the CMP scripts when consent is ezoic (explicit default)', () => {
+    ensureEzoicScripts({ consent: 'ezoic' });
+    expect(injectedMarkers()).toEqual(['cmp1', 'cmp2', 'cmd-stub', 'sa']);
   });
 
   it('honors overridden sa and CMP URLs', () => {

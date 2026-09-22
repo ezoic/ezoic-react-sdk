@@ -17,14 +17,32 @@ const MARKER_ATTR = 'data-ezoic-sdk';
 
 type ScriptMarker = 'cmp1' | 'cmp2' | 'cmd-stub' | 'sa' | 'analytics';
 
+/**
+ * Who manages consent on the page.
+ *
+ * - `'ezoic'` (default): the SDK injects Ezoic's Gatekeeper CMP scripts.
+ * - `'third-party'`: the site runs its own CMP; the SDK injects no CMP scripts.
+ *   Pair this with "third-party CMP" under Consent Management in the Ezoic
+ *   dashboard (Settings > Privacy). The dashboard setting alone does not stop
+ *   the client-side injection.
+ */
+export type EzoicConsentMode = 'ezoic' | 'third-party';
+
 /** Options controlling which scripts {@link ensureEzoicScripts} injects. */
 export interface EnsureEzoicScriptsOptions {
   /** Override the `sa.min.js` URL. Defaults to {@link SA_SCRIPT_URL}. */
   saScriptUrl?: string;
   /**
+   * Which CMP owns consent. Defaults to `'ezoic'`, which injects the Gatekeeper
+   * CMP scripts before `sa.min.js`. Set `'third-party'` when the site runs
+   * another CMP: no CMP script is injected and {@link cmpScriptUrls} is ignored.
+   * The cmd stub and `sa.min.js` still inject in order.
+   */
+  consent?: EzoicConsentMode;
+  /**
    * Override the two Gatekeeper CMP script URLs. Defaults to
-   * {@link CMP_SCRIPT_URL_1} and {@link CMP_SCRIPT_URL_2}. Consent scripts are
-   * always injected before `sa.min.js`; this only changes their URLs.
+   * {@link CMP_SCRIPT_URL_1} and {@link CMP_SCRIPT_URL_2}. This only changes
+   * the URLs; use {@link consent} `'third-party'` to skip injection entirely.
    */
   cmpScriptUrls?: readonly [string, string];
   /** Optional analytics script URL, injected last (after `sa.min.js`). */
@@ -109,8 +127,9 @@ function createStubScript(): HTMLScriptElement {
 /**
  * Injects the Ezoic script chain in the required order, exactly once:
  *
- * 1. Gatekeeper CMP `min.js` (`data-cfasync="false"`)
- * 2. Gatekeeper CMP `cmp.min.js` (`data-cfasync="false"`)
+ * 1. Gatekeeper CMP `min.js` (`data-cfasync="false"`) - skipped when
+ *    `consent` is `'third-party'`
+ * 2. Gatekeeper CMP `cmp.min.js` (`data-cfasync="false"`) - skipped likewise
  * 3. inline `ezstandalone.cmd` stub
  * 4. `sa.min.js` (`async`)
  * 5. optional analytics script
@@ -124,15 +143,17 @@ export function ensureEzoicScripts(options: EnsureEzoicScriptsOptions = {}): voi
   const w = getWindow();
   if (!w || typeof document === 'undefined') return;
 
-  const [cmp1, cmp2] = options.cmpScriptUrls ?? [CMP_SCRIPT_URL_1, CMP_SCRIPT_URL_2];
   const saUrl = options.saScriptUrl ?? SA_SCRIPT_URL;
   const target = document.head ?? document.documentElement;
 
-  if (!externalScriptPresent(cmp1, 'cmp1')) {
-    target.appendChild(createExternalScript(cmp1, 'cmp1', { cfasync: true }));
-  }
-  if (!externalScriptPresent(cmp2, 'cmp2')) {
-    target.appendChild(createExternalScript(cmp2, 'cmp2', { cfasync: true }));
+  if (options.consent !== 'third-party') {
+    const [cmp1, cmp2] = options.cmpScriptUrls ?? [CMP_SCRIPT_URL_1, CMP_SCRIPT_URL_2];
+    if (!externalScriptPresent(cmp1, 'cmp1')) {
+      target.appendChild(createExternalScript(cmp1, 'cmp1', { cfasync: true }));
+    }
+    if (!externalScriptPresent(cmp2, 'cmp2')) {
+      target.appendChild(createExternalScript(cmp2, 'cmp2', { cfasync: true }));
+    }
   }
 
   // Decide whether a stub already exists BEFORE creating the queue object,
