@@ -69,11 +69,11 @@
     "@eslint/js": "^10.0.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitest/coverage-v8": "^4.1.12",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^29.1.1",
@@ -87,6 +87,7 @@
     "vitest": "^4.1.12"
   },
   "overrides": {
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "minimatch": "^11.0.1"
   }
 }
